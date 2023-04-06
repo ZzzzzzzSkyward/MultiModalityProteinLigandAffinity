@@ -1,6 +1,8 @@
 from header import *
 
-#TODO add more lambda, fix wrongly named lambda
+# TODO add more lambda, fix wrongly named lambda
+
+
 class param:
     l0 = 0
     l1 = 0
@@ -11,15 +13,14 @@ class param:
     ep = 200  # epoch
     sd = 0  # seed
 
-    def load_from_cli(self):
-        self.l0=args.l0
-        self.l1=args.l1
-        self.l2=args.l2
-        self.l3=args.l3
-        self.lr=args.lr
-        self.bs=args.batch_size
-        self.ep=args.epoch
-
+    def load_from_cli(self, args={}):
+        self.l0 = args.l0
+        self.l1 = args.l1
+        self.l2 = args.l2
+        self.l3 = args.l3
+        self.lr = args.lr
+        self.bs = args.batch_size
+        self.ep = args.epoch
 
     def seed(self):
         torch.manual_seed(self.sd)

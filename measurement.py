@@ -35,7 +35,9 @@ def four_of_them(y_pred, y_true):
 # 同时计算AUPRC与AUROC
 # 并且在只考虑结合位点（取接触点中的最大值）时再次计算
 
-#TODO改写接触的AUPRC统计
+# TODO改写接触的AUPRC统计
+
+
 def evaluate_contact(model, loader, prot_length, comp_length):
     y_pred, y_true, ind = np.zeros((len(loader.dataset), 1000, 56)), np.zeros(
         (len(loader.dataset), 1000, 56)), np.zeros(len(loader.dataset))
@@ -96,11 +98,12 @@ def contact_au_original(y_pred, y_true, prot_length, comp_length, ind):
     return np.mean(AP), np.mean(AUC), np.mean(AP_margin), np.mean(AUC_margin)
 
 
-def calculate_AP_AUC(y_pred, y_true, prot_length, comp_length, ind, i):
-    length_prot = int(prot_length[i])
-    length_comp = int(comp_length[i])
-    true_label = y_true[i][:length_prot, :length_comp]
-    full_matrix = y_pred[i][:length_prot, :length_comp]
+def calculate_AP_AUC(args):
+    y_pred, y_true, protein_length, compound_length = args
+
+    # 提取出标签
+    true_label = y_true[:protein_length, :compound_length]
+    full_matrix = y_pred[:protein_length, :compound_length]
 
     # 计算每行的最大值
     true_label_max = np.amax(true_label, axis=1)
@@ -122,32 +125,29 @@ def calculate_AP_AUC(y_pred, y_true, prot_length, comp_length, ind, i):
                     average_precision[1], roc_auc[1]])
 
 
+cpu = multiprocessing.cpu_count()
+
+
 def contact_au(y_pred, y_true, protein_length, compound_length, ind):
     # 类型转换为整型
     protein_length = protein_length.astype(int)
     compound_length = compound_length.astype(int)
 
     # 创建进程池
-    pool = multiprocessing.Pool()
+    global cpu
+    length = y_true.shape[0]
+    num_processes = min(length, cpu)
+    pool = multiprocessing.Pool(processes=num_processes)
 
     # 并行计算AP和AUC
-    length = y_true.shape[0]
-    AAAA = np.empty((length, 4))
-    for i in range(length):
-        if np.any(ind[i] != 0):
-            AAAA[i] = calculate_AP_AUC(
-                y_pred,
-                y_true,
-                protein_length,
-                compound_length,
-                ind,
-                i)
+    AAAA = pool.map(calculate_AP_AUC, [(y_pred, y_true, int(protein_length), int(
+        compound_length))for i in range(length) if ind[i] != 0], chunksize=1)
 
     # 关闭进程池
     pool.close()
     pool.join()
 
     # 返回平均值
-    AAAA_mean = np.mean(AAAA, axis=0)
+    AAAA_mean = np.mean(np.array(AAAA), axis=0)
     # return AAAA_mean[0], AAAA_mean[1], AAAA_mean[2], AAAA_mean[3]
     return AAAA_mean

@@ -2,10 +2,10 @@ from header import *
 argument_parser = argparse.ArgumentParser()
 argument_settings = {
     'epoch': 100,
-    'resume': 0,
+    'resume': True,
     'data_processed_dir': './data_processed/',
     'data_pretrain_dir': './data_pretrain/',
-    'train': 0,
+    'train': True,
     'batch_size': 32,
     'l0': 0.01,
     'l1': 0.01,
@@ -13,17 +13,20 @@ argument_settings = {
     'l3': 10,
     'lr': 1e-4,  # learning rate
 }
+args = {}
 
 # argument format: --xxx=yyy --z=w
 
 
-def initialize_parser(settings):
+def initialize_parser(settings=argument_settings):
     for i in settings:
-        argument_parser.add_argument(
-            '--' + i,
-            type=type(
-                settings[i]),
-            default=settings[i])
-
-
-args = argument_parser.parse_args()
+        if settings[i] == True:
+            argument_parser.add_argument('--' + i, action='store_true', help='')
+        else:
+            argument_parser.add_argument(
+                '--' + i,
+                type=type(
+                    settings[i]),
+                default=settings[i])
+    global args
+    args = argument_parser.parse_args()

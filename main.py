@@ -15,9 +15,9 @@ from dataset import *
 # 3.define super parameters
 # currently there is only one model running
 params = param()
-params.load_from_cli()
+params.load_from_cli(args)
 params.seed()
-params.verify()
+params.verify()  # deterministic
 # 4.define output
 logg.toscreen()
 # 5.load model
