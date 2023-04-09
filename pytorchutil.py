@@ -41,3 +41,16 @@ def initialize_weight(model):
             nn.init.kaiming_uniform_(model.weight.data)
         if model.bias is not None:
             nn.init.kaiming_uniform_(model.bias.data)
+
+
+def move_to(*tensors, device=None):
+    if not device:
+        device = torch.device('cpu')
+    device = torch.device(device)
+    moved_tensors = []
+    for tensor in tensors:
+        if isinstance(tensor, torch.Tensor):
+            moved_tensors.append(tensor.to(device))
+        else:
+            moved_tensors.append(tensor)
+    return tuple(moved_tensors)

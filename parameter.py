@@ -12,15 +12,19 @@ class param:
     bs = 32  # batch_size
     ep = 200  # epoch
     sd = 0  # seed
+    input_size = 0
+    output_size = 0
+    hidden_size = 0
+    dropout = 0
 
-    def load_from_cli(self, args={}):
-        self.l0 = args.l0
-        self.l1 = args.l1
-        self.l2 = args.l2
-        self.l3 = args.l3
-        self.lr = args.lr
-        self.bs = args.batch_size
-        self.ep = args.epoch
+    def load_from_cli(self, _args={}):
+        self.l0 = _args.l0
+        self.l1 = _args.l1
+        self.l2 = _args.l2
+        self.l3 = _args.l3
+        self.lr = _args.lr
+        self.bs = _args.batch_size
+        self.ep = _args.epoch
 
     def seed(self):
         torch.manual_seed(self.sd)

@@ -6,6 +6,7 @@ argument_settings = {
     'data_processed_dir': './data_processed/',
     'data_pretrain_dir': './data_pretrain/',
     'train': True,
+    'tofile': True,
     'batch_size': 32,
     'l0': 0.01,
     'l1': 0.01,
@@ -13,12 +14,13 @@ argument_settings = {
     'l3': 10,
     'lr': 1e-4,  # learning rate
 }
-args = {}
+args = None
 
 # argument format: --xxx=yyy --z=w
 
 
 def initialize_parser(settings=argument_settings):
+    global args
     for i in settings:
         if settings[i] == True:
             argument_parser.add_argument('--' + i, action='store_true', help='')
@@ -28,5 +30,4 @@ def initialize_parser(settings=argument_settings):
                 type=type(
                     settings[i]),
                 default=settings[i])
-    global args
-    args = argument_parser.parse_args()
+    return argument_parser.parse_args()

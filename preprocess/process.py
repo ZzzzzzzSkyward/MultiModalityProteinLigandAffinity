@@ -28,8 +28,8 @@ output_path = "z:/"
 pairs_length = len([name for name in os.listdir(
     data_path) if os.path.isdir(os.path.join(data_path, name))])
 # 本次任务处理的集合
-num_size = 32
-percent_train = 1 / 32
+num_size = 128
+percent_train = 4 / 32
 protein_seq_maxlength = 1024
 
 # 读取PDB文件
@@ -118,7 +118,7 @@ def extract_seq(file_list):
 # 目前还是采用裁剪的方法，因为想不出来还有什么可行的方案
 
 
-def pad_array(arr, dtype=np.int8):
+def pad_array(arr, dtype=np.int32):
     max_len = max([len(row) for row in arr])
     print("Pad array: max_len: {}".format(max_len))
     padded_arr = np.zeros(
@@ -464,13 +464,15 @@ def zip_train_test_files(path=output_path, compress=False):
             zipf.write(file_path, arcname=os.path.basename(file_path))
 
 
+all = ["train", "test_protein_only", "test_ligand_only", "test_both_none"]
 if __name__ == "__main__":
-    # split_dataset()
-    # for i in
-    # ["train","test_protein_only","test_ligand_only","test_both_none"]:
-    #for i in ["test_both_none"]:
-    for i in []:
+    #split_dataset()
+    # for i in ["test_both_none"]:
+    # for i in []:
+    # for i in ["train"]:
+    for i in ["train","test_both_none"]:
+    #for i in all:
         extract_seq_from_file(i)
         generate_compound_1d(i)
         extract_protein_compound_label(i)
-    zip_train_test_files()
+    # zip_train_test_files()

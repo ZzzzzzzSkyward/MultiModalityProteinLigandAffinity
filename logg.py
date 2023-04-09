@@ -21,10 +21,11 @@ def calculate_loss_slope(loss_values):
 logger = logging.getLogger('log')
 logger.setLevel(logging.DEBUG)
 
-# create console handler and set level to debug
-
+_logdate = '%m.%d.%H:%M:%S'
 # create formatter
-formatter = logging.Formatter('%(asctime)s[%(levelname)s]:%(message)s')
+formatter = logging.Formatter(
+    '%(asctime)s[%(levelname)s]%(message)s',
+    datefmt=_logdate)
 
 screen_length = 10
 loss_val = []
@@ -119,10 +120,15 @@ def decide_terminate():
 
 
 def log(*args):
-    logger.info(*args)
+    # 将所有参数转换为字符串，并拼接成一个大的字符串
+    msg = ' '.join(str(arg) for arg in args)
+    # 将拼接后的字符串作为参数传递给 logger.info
+    logger.info(msg)
+
 
 def warn(*args):
     logger.warning(*args)
+
 
 if __name__ == '__main__':
     tofile()

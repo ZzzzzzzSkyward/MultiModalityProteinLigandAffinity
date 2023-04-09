@@ -1,7 +1,7 @@
 # 1.import libraries
 # common headers
-from unittest import loader
 from header import *
+from constants import *
 # neural network modules
 from models import *
 # command line interface
@@ -20,24 +20,33 @@ from train_single import *
 # 3.define super parameters
 # currently there is only one model running
 params = param()
+args = initialize_parser()
 params.load_from_cli(args)
 params.seed()
 params.verify()  # deterministic
 # 4.define output
-logg.toscreen()
+toscreen()
+if args.tofile:
+    tofile()
 # 5.load model
 # currently there is only the concatenation model
-model = ConcatenationModel(params)
+params.input_size = 1024
+params.hidden_size = 128
+params.bs = 1
+model = OneDimensionalAffinityModel(params)
 # 6.train model
-# load data
-data_train = dataset("data_train", "train", DATA_DIR, "test_1")
-data_test = dataset("data_test", "validate", DATA_DIR, "test_1")
-data_train.select(["seq", "smiles", "logk"])
-data_test.select(["seq", "smiles", "logk"])
-loader_train = dataloader(data_train, args.batch_size)
-loader_test = dataloader(data_test, args.batch_size)
-Train(model, loader_train, loader_test, args.epoch, args.batch_size, args.lr)
-del loader_train, loader_test
+if args.train:
+    # load data
+    data_train = dataset("data_train", "train", DATA_DIR, "test_1")()
+    data_test = dataset("data_test", "test_both_none", DATA_DIR, "test_1")()
+    data_train.choose(["seq", "smiles", "logk"])
+    data_test.choose(["seq", "smiles", "logk"])
+    loader_train = dataloader(data_train, params.bs)
+    loader_test = dataloader(data_test, params.bs, False)
+    Train(
+        model,
+        loader_train,
+        loader_test, args)
 # 7.verify model
 # set environment
 # model.eval()

@@ -13,7 +13,7 @@ def _tocpu(y_pred, y_true):
     y_pred, y_true = y_pred.cpu().numpy(), y_true.cpu().numpy()
     return y_pred, y_true
 
-def _getloss(l):
+def getloss(l):
     return l.detach().cpu().numpy()
 
 def pearson(y_pred, y_true):

@@ -1,4 +1,5 @@
 from header import *
+from logg import warn
 all_dataset_files = {
     # the amino sequence of proteins
     "seq": "{cate}_sequence",
@@ -15,55 +16,60 @@ all_dataset_files = {
 }
 
 
-def load_multi(dir, cate, selected):
-    # Load each .npy file and append to a list
+def _load_multi(dir, cate, selected):
     data_dict = {}
     for file in all_dataset_files:
         if file not in selected:
             continue
-        file = all_dataset_files[file].format(cate)
-        filepath = dir + "/" + file
+        tag = file
+        file = all_dataset_files[file].format(cate=cate)
+        filepath = zzz._todir(dir) + file
         if os.path.exists(filepath):
             data = np.load(filepath)
-            data_dict[file] = data
+            data_dict[tag] = data
         else:
-            warn("Could not load " + file)
+            warn("Could not load " + filepath)
 
     return data_dict
 
 
-def dataset_get_data(self, index):
+def _dataset_get_data(self, index):
     return self.data[index]
 
 
-def dataset_select(self, names):
+def dataset_select(self, names=[]):
     datas = self.load_data(names)
     data = []
-    for i in names:
-        data.append(datas[i])
+    onekey=list(datas.keys())[0]
+    for j in range(len(datas[onekey])):
+        one = []
+        for i in names:
+            one.append(datas[i][j])
+        data.append(one)
     self.data = data
+    return data
 
 
 def dataset(class_name, filename="", dir="", subdir=None):
     base_class = torch.utils.data.Dataset
-    directory = dir
+    directory = zzz._todir(dir)
     if subdir:
-        directory = dir + "/" + subdir
+        directory = zzz._todir(dir) + subdir
     # Define a new class that inherits from the provided base class
     class_attributes = {
         '__init__': lambda self: setattr(self, "filename", filename),
-        'load_data': lambda self, selected: load_multi(directory, filename, selected),
-        'select': dataset_select,
-        '__len__': lambda self: len(self.data[0][0]),
-        '__getitem__': dataset_get_data
+        'load_data': lambda self, selected: _load_multi(directory, filename, selected),
+        'choose': dataset_select,
+        '__len__': lambda self: len(self.data),
+        '__getitem__': _dataset_get_data
     }
     new_class = type(class_name, (base_class,), class_attributes)
     return new_class
 
 
-def dataloader(_dataset, batch_size=32):
+def dataloader(_dataset, batch_size=32, shuffle=True):
     loader = torch.utils.data.DataLoader(
         dataset=_dataset,
         batch_size=batch_size,
-        shuffle='train' in _dataset.__name__)
+        shuffle=shuffle)
     return loader
