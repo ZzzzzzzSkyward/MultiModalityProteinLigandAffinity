@@ -118,6 +118,12 @@ def decide_terminate():
     return False
 
 
+def log(*args):
+    logger.info(*args)
+
+def warn(*args):
+    logger.warning(*args)
+
 if __name__ == '__main__':
     tofile()
     logger.debug('debug message')

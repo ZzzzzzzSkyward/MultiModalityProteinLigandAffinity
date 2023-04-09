@@ -1,17 +1,29 @@
 from header import *
 
 
-def preprocess(y_pred, y_true):
-    return y_pred.squeeze(), y_true.squeeze()
+def _preprocess(y_pred, y_true, cpu=False):
+    y_pred, y_true = y_pred.detach(), y_true.detach()
+    y_pred, y_true = y_pred.squeeze(), y_true.squeeze()
+    if cpu:
+        y_pred, y_true = y_pred.cpu().numpy(), y_true.cpu().numpy()
+    return y_pred, y_true
 
+
+def _tocpu(y_pred, y_true):
+    y_pred, y_true = y_pred.cpu().numpy(), y_true.cpu().numpy()
+    return y_pred, y_true
+
+def _getloss(l):
+    return l.detach().cpu().numpy()
 
 def pearson(y_pred, y_true):
     return scipy.stats.pearsonr(y_pred, y_true)
 
 
 def rmse(y_pred, y_true):
-    mse = nn.functional.mse_loss(y_pred, y_true)
+    mse = F.mse_loss(y_pred, y_true)
     rmse = torch.sqrt(mse)
+    # .item会自动把数据搬回CPU
     return rmse.item()
 
 
@@ -24,16 +36,15 @@ def rho(y_pred, y_true):
 
 
 def four_of_them(y_pred, y_true):
-    y_pred, y_true = preprocess(y_pred, y_true)
-    y_pearson = pearson(y_pred, y_true)
+    y_pred, y_true = _preprocess(y_pred, y_true)
     y_rmse = rmse(y_pred, y_true)
+    # 以下计算需要搬回CPU上做，因为numpy不支持GPU
+    y_pred, y_true = _tocpu(y_pred, y_true)
+    y_pearson = pearson(y_pred, y_true)
     y_tau = tau(y_pred, y_true)
     y_rho = rho(y_pred, y_true)
     return y_pearson, y_rmse, y_tau, y_rho
 
-# TODO
-# 同时计算AUPRC与AUROC
-# 并且在只考虑结合位点（取接触点中的最大值）时再次计算
 
 # TODO改写接触的AUPRC统计
 
@@ -100,7 +111,7 @@ def contact_au_original(y_pred, y_true, prot_length, comp_length, ind):
 
 def calculate_AP_AUC(args):
     y_pred, y_true, protein_length, compound_length = args
-
+    y_pred, y_true = _preprocess(y_pred, y_true, cpu=True)
     # 提取出标签
     true_label = y_true[:protein_length, :compound_length]
     full_matrix = y_pred[:protein_length, :compound_length]
