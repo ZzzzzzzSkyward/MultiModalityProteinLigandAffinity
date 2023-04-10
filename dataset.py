@@ -1,5 +1,6 @@
 from header import *
 from logg import warn
+
 all_dataset_files = {
     # the amino sequence of proteins
     "seq": "{cate}_sequence",
@@ -34,13 +35,13 @@ def _load_multi(dir, cate, selected):
 
 
 def _dataset_get_data(self, index):
-    return self.data[index]
+    return tuple(self.data[index])
 
 
-def dataset_select(self, names=[]):
+def _dataset_select(self, names=[]):
     datas = self.load_data(names)
     data = []
-    onekey=list(datas.keys())[0]
+    onekey = list(datas.keys())[0]
     for j in range(len(datas[onekey])):
         one = []
         for i in names:
@@ -57,19 +58,24 @@ def dataset(class_name, filename="", dir="", subdir=None):
         directory = zzz._todir(dir) + subdir
     # Define a new class that inherits from the provided base class
     class_attributes = {
-        '__init__': lambda self: setattr(self, "filename", filename),
-        'load_data': lambda self, selected: _load_multi(directory, filename, selected),
-        'choose': dataset_select,
-        '__len__': lambda self: len(self.data),
-        '__getitem__': _dataset_get_data
+        '__init__':
+        lambda self: setattr(self, "filename", filename),
+        'load_data':
+        lambda self, selected: _load_multi(directory, filename, selected),
+        'choose':
+        _dataset_select,
+        '__len__':
+        lambda self: len(self.data),
+        '__getitem__':
+        _dataset_get_data
     }
-    new_class = type(class_name, (base_class,), class_attributes)
+    new_class = type(class_name, (base_class, ), class_attributes)
     return new_class
 
 
 def dataloader(_dataset, batch_size=32, shuffle=True):
-    loader = torch.utils.data.DataLoader(
-        dataset=_dataset,
-        batch_size=batch_size,
-        shuffle=shuffle)
+    print("loader", "batch_size", batch_size, "shuffle", shuffle)
+    loader = torch.utils.data.DataLoader(dataset=_dataset,
+                                         batch_size=batch_size,
+                                         shuffle=shuffle)
     return loader

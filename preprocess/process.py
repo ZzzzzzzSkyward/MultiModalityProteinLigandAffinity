@@ -20,16 +20,21 @@ import numpy as np
 import pandas as pd
 import os
 import sys
+import warnings
+#去掉rdkit的警告
+warnings.filterwarnings("ignore")
 # 参数定义
 PDBBindDir = "D:/pdb/"
 data_path = PDBBindDir + "refined-set/"
 def_path = PDBBindDir + "index/"
 output_path = "z:/"
-pairs_length = len([name for name in os.listdir(
-    data_path) if os.path.isdir(os.path.join(data_path, name))])
+pairs_length = len([
+    name for name in os.listdir(data_path)
+    if os.path.isdir(os.path.join(data_path, name))
+])
 # 本次任务处理的集合
-num_size = 128
-percent_train = 4 / 32
+num_size = 5319
+percent_train = 0.7
 protein_seq_maxlength = 1024
 
 # 读取PDB文件
@@ -55,7 +60,8 @@ aa_dict = {
     'THR': 'T',
     'VAL': 'V',
     'TRP': 'W',
-    'TYR': 'Y'}
+    'TYR': 'Y'
+}
 aa_dict_number = {
     'ALA': 1,
     'VAL': 2,
@@ -76,7 +82,8 @@ aa_dict_number = {
     'ASP': 17,
     'SER': 18,
     'THR': 19,
-    'GLY': 20}
+    'GLY': 20
+}
 
 
 def pdb_parse(filename):
@@ -91,11 +98,14 @@ def pdb_parse(filename):
     for model in structure:
         # 遍历每个链
         for chain in model:
-            print(chain.id)
+            #print(chain.id)
             # 提取氨基酸序列
             # sequence = [aa_dict.get(residue.get_resname(), '')  # 扔掉不是氨基酸的东西
-            sequence = [aa_dict_number.get(residue.get_resname())  # 扔掉不是氨基酸的东西
-                        for residue in chain if aa_dict_number.get(residue.get_resname())]
+            sequence = [
+                aa_dict_number.get(residue.get_resname())  # 扔掉不是氨基酸的东西
+                for residue in chain
+                if aa_dict_number.get(residue.get_resname())
+            ]
             #sequence_str = ''.join(sequence)
             # seq.append(sequence_str)
             if len(sequence) > 0:
@@ -103,6 +113,8 @@ def pdb_parse(filename):
             #print('Chain {}: {}'.format(chain.id, sequence_str))
 
     return seq
+
+
 # 提取1d氨基酸序列
 
 
@@ -115,6 +127,7 @@ def extract_seq(file_list):
         sequences.append(flat_array)
     return sequences
 
+
 # 目前还是采用裁剪的方法，因为想不出来还有什么可行的方案
 
 
@@ -123,51 +136,40 @@ def pad_array(arr, dtype=np.int32):
     print("Pad array: max_len: {}".format(max_len))
     padded_arr = np.zeros(
         # (len(arr), min(protein_seq_maxlength, max_len)), dtype=dtype)
-        (len(arr), protein_seq_maxlength), dtype=dtype)
+        (len(arr), protein_seq_maxlength),
+        dtype=dtype)
     for i, row in enumerate(arr):
-        padded_arr[i, :min(protein_seq_maxlength, len(row))
-                   ] = row[:min(protein_seq_maxlength, len(row))]
+        padded_arr[i, :min(protein_seq_maxlength, len(row)
+                           )] = row[:min(protein_seq_maxlength, len(row))]
     return padded_arr
+
+
 # 从目录文件读取
 
 
 def extract_seq_from_file(splitset):
-    file_list = [data_path + i + "/" + i +
-                 "_protein.pdb" for i in read_filelist(splitset)]
+    file_list = [
+        data_path + i + "/" + i + "_protein.pdb"
+        for i in read_filelist(splitset)
+    ]
     seqs = extract_seq(file_list)
     if not seqs:
         return
     # with open(output_path + splitset + "_sequence", 'w', encoding='utf-8') as f:
-        # f.write("\n".join(seqs))
+    # f.write("\n".join(seqs))
     # print(seqs)
     seqs = pad_array(seqs)
     dump_npy(splitset + "_sequence", seqs)
+
 
 # one-hot编码
 
 
 def one_hot_encoding(sequence):
     aa_list = [
-        'G',
-        'A',
-        'V',
-        'L',
-        'I',
-        'F',
-        'W',
-        'Y',
-        'D',
-        'E',
-        'N',
-        'Q',
-        'H',
-        'K',
-        'R',
-        'C',
-        'M',
-        'S',
-        'T',
-        'P']
+        'G', 'A', 'V', 'L', 'I', 'F', 'W', 'Y', 'D', 'E', 'N', 'Q', 'H', 'K',
+        'R', 'C', 'M', 'S', 'T', 'P'
+    ]
     aa_dict = {aa_list[i]: i for i in range(len(aa_list))}
     n_aa = len(aa_list)
     n_seq = len(sequence)
@@ -183,28 +185,23 @@ if __name__ == 'main__':
     pdb_file_path = "D:/pdb/refined-set/1a28/1a28_protein.pdb"
     print(pdb_parse(pdb_file_path))
 
-
 # 选择-logKd/Ki作为标签，因为只有这个数据是全的
 
 
-def extract_protein_compound_label(
-        splitset, file_path=def_path + "INDEX_refined_data.2020"):
+def extract_protein_compound_label(splitset,
+                                   file_path=def_path +
+                                   "INDEX_refined_data.2020"):
     """
     从PDBbind 2020数据集中提取负对数Kd/Ki值
     @param file_path PDBbind 2020数据集中的index/INDEX_xx_data.2020文件路径
     @return 包含负对数Kd/Ki的数据框
     """
     # 读取PDBbind 2020数据集中的index/INDEX_xx_data.2020文件
-    df = pd.read_csv(
-        file_path,
-        delim_whitespace=True,
-        header=None,
-        skiprows=4,
-        usecols=[
-            0,
-            1,
-            2,
-            3])
+    df = pd.read_csv(file_path,
+                     delim_whitespace=True,
+                     header=None,
+                     skiprows=4,
+                     usecols=[0, 1, 2, 3])
 
     # 重命名列名
     df.columns = ['pdbid', 'resolution', 'release_year', '-logKd/Ki']
@@ -219,8 +216,11 @@ def extract_protein_compound_label(
 
 
 # 生成SMILES文本
-SMILES_CHARS = [' ', '#', '(', ')', '+', '-', '.', '/', ':', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-                '=', '@', 'B', 'C', 'F', 'H', 'I', 'N', 'O', 'P', 'S', '[', '\\', ']', 'a', 'c', 'l', 'n', 'o', 'r', 's']
+SMILES_CHARS = [
+    ' ', '#', '(', ')', '+', '-', '.', '/', ':', '0', '1', '2', '3', '4', '5',
+    '6', '7', '8', '9', '=', '@', 'B', 'C', 'F', 'H', 'I', 'N', 'O', 'P', 'S',
+    '[', '\\', ']', 'a', 'c', 'l', 'n', 'o', 'r', 's'
+]
 smiles_dict = {v: i for i, v in enumerate(SMILES_CHARS)}
 
 
@@ -283,6 +283,8 @@ def generate_adjacency_matrices(file_set, file_path, output_file):
     # 将所有邻接矩阵导出到一个文件中
     adjacency_matrices_np = np.array(adjacency_matrices)
     dump_npy(output_file, adjacency_matrices_np)
+
+
 # 注意，通过计算哈希值来确定蛋白质或配体是否相同，只能用于格式统一的数据集
 
 
@@ -355,20 +357,16 @@ def split_dataset():
     global num_size
     # 获取所有蛋白质-化合物配体的文件夹名称
     pairs = [
-        name for name in os.listdir(data_path) if os.path.isdir(
-            os.path.join(
-                data_path,
-                name))]
+        name for name in os.listdir(data_path)
+        if os.path.isdir(os.path.join(data_path, name)) and name != "index"
+        and name != "readme"
+    ]
 
     # 随机选择num_size个文件夹，并将其分配到训练集或测试集
+    global num_size
+    num_size = min(num_size, len(pairs))
     selected = random.sample(pairs, num_size)
     num_train = int(num_size * percent_train)
-
-    # 创建训练集和测试集文件夹
-    #train_path = os.path.join(output_path, "train")
-    #test_path = os.path.join(output_path, "test")
-    #os.makedirs(train_path, exist_ok=True)
-    #os.makedirs(test_path, exist_ok=True)
 
     # 将选择的文件夹分配到训练集或测试集，并检查测试集中的分子和蛋白质是否满足要求
     trains = set()
@@ -420,20 +418,15 @@ def split_dataset():
     dump_set("train", trains)
     dump_set("all", trains | tests)
     print(
-        f"选取{num_size}对,{num_train}|{num_size - num_train}={num_train/num_size}")
+        f"选取{num_size}对,{num_train}|{num_size - num_train}={num_train/num_size}"
+    )
     print("集合|蛋白质|化合物")
-    print(
-        f"训练集|{len(trains)}")
-    print(
-        f"测试集|{len(test_proteins)}|{len(test_ligands)}")
-    print(
-        f"蛋白质测试集|{len(test_protein_only)}|")
-    print(
-        f"化合物测试集| |{len(test_ligand_only)}")
-    print(
-        f"配对测试集|{len(test_both_none)}")
-    print(
-        f"非测试集|{len(test_both_present)}")
+    print(f"训练集|{len(trains)}")
+    print(f"测试集|{len(test_proteins)}|{len(test_ligands)}")
+    print(f"蛋白质测试集|{len(test_protein_only)}|")
+    print(f"化合物测试集| |{len(test_ligand_only)}")
+    print(f"配对测试集|{len(test_both_none)}")
+    print(f"非测试集|{len(test_both_present)}")
 
 
 cached_files = {}
@@ -453,13 +446,15 @@ def zip_train_test_files(path=output_path, compress=False):
     将所有以 train 和 test 开头的无后缀文件打包成 zip 文件
     """
     # 获取所有以 train 和 test 开头的文件路径
-    file_paths = [path + f for f in os.listdir(path)
-                  if os.path.isfile(path + f)
-                  and (f.startswith('train') or f.startswith('test'))
-                  and '.' not in f]
+    file_paths = [
+        path + f for f in os.listdir(path) if os.path.isfile(path + f) and (
+            f.startswith('train') or f.startswith('test')) and '.' not in f
+    ]
 
     # 创建 zip 文件并添加文件
-    with zipfile.ZipFile(path + 'data.zip', 'w', zipfile.ZIP_LZMA if compress else zipfile.ZIP_DEFLATED) as zipf:
+    with zipfile.ZipFile(
+            path + 'data.zip', 'w',
+            zipfile.ZIP_LZMA if compress else zipfile.ZIP_DEFLATED) as zipf:
         for file_path in file_paths:
             zipf.write(file_path, arcname=os.path.basename(file_path))
 
@@ -470,8 +465,8 @@ if __name__ == "__main__":
     # for i in ["test_both_none"]:
     # for i in []:
     # for i in ["train"]:
-    for i in ["train","test_both_none"]:
     #for i in all:
+    for i in ["train", "test_both_none"]:
         extract_seq_from_file(i)
         generate_compound_1d(i)
         extract_protein_compound_label(i)

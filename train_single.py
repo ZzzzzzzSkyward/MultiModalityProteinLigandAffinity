@@ -8,8 +8,10 @@ from pytorchutil import *
 def train(model, loader_train, optimizer, criterion):
     total_loss = 0
     for batch, (input1, input2, labels) in enumerate(loader_train):
+        #print(input1.shape, input2.shape, labels.shape)
         input1, input2, labels = move_to(input1, input2, labels, device=DEVICE)
         outputs = model(input1, input2)
+        #print(outputs.shape, labels.shape)
         loss = criterion(outputs, labels)
         total_loss += getloss(loss)
         optimizer.zero_grad()
@@ -24,8 +26,10 @@ def test(model, loader_test, criterion):
     total_loss = 0
     with torch.no_grad():
         for batch, (input1, input2, labels) in enumerate(loader_test):
-            input1, input2, labels = move_to(
-                input1, input2, labels, device=DEVICE)
+            input1, input2, labels = move_to(input1,
+                                             input2,
+                                             labels,
+                                             device=DEVICE)
             outputs = model(input1, input2)
             loss = criterion(outputs, labels)
             total_loss += getloss(loss)
@@ -43,16 +47,15 @@ def Train(model, loader_train, loader_test, args):
     num_epochs = args.epoch
     lr = args.lr
     criterion = model.criterion() if hasattr(
-        model, 'criterion') else nn.MSELoss(
-        reduction='mean')
-    optimizer = model.optimizer() if hasattr(model, 'optimizer') else optim.Adam(
-        model.parameters(), lr=lr)
+        model, 'criterion') else nn.MSELoss(reduction='mean')
+    optimizer = model.optimizer() if hasattr(
+        model, 'optimizer') else optim.Adam(model.parameters(), lr=lr)
     progress = tqdm(range(num_epochs))
     start_epoch = 0
     min_test_loss = 1e4
     checkpoint_pth = "test_pth"
     if args.resume:
-        checkpoint = torch.load('./weights/' + checkpoint_pth)
+        checkpoint = torch.load('./weights/' + checkpoint_pth+".pth")
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch'] + 1
@@ -65,20 +68,22 @@ def Train(model, loader_train, loader_test, args):
         train_loss = train(model, loader_train, optimizer, criterion)
         addloss(train_loss)
         progress.update(1)
-        if epoch % 100 == 0:
+        if epoch % 10 == 0 or args.detailed:
             # test model
             model.eval()
             test_loss = test(model, loader_test, criterion)
             epochloss2(epoch, train_loss, test_loss)
             if min_test_loss > test_loss:
                 min_test_loss = test_loss
-                torch.save({'epoch': epoch,
-                            'min_test_loss': min_test_loss,
-                            'model_state_dict': model.state_dict(),
-                            'optimizer_state_dict': optimizer.state_dict()},
-                           './weights/' + checkpoint_pth + ".pth")
+                torch.save(
+                    {
+                        'epoch': epoch,
+                        'min_test_loss': min_test_loss,
+                        'model_state_dict': model.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict()
+                    }, './weights/' + checkpoint_pth + ".pth")
 
-    if epoch % 100 == 0:
+    if epoch % 10 == 0:
         # test model
         model.eval()
         test_loss = test(model, loader_test, criterion)

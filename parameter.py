@@ -25,6 +25,12 @@ class param:
         self.lr = _args.lr
         self.bs = _args.batch_size
         self.ep = _args.epoch
+        #self.dropout=_args.dropout
+        #self.sd = _args.seed
+        #self.input_size = _args.input_size
+        #self.output_size = _args.output_size
+        #self.hidden_size = _args.hidden_size
+
 
     def seed(self):
         torch.manual_seed(self.sd)

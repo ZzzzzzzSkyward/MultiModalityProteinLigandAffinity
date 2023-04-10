@@ -24,6 +24,7 @@ args = initialize_parser()
 params.load_from_cli(args)
 params.seed()
 params.verify()  # deterministic
+log(args)
 # 4.define output
 toscreen()
 if args.tofile:
@@ -32,7 +33,6 @@ if args.tofile:
 # currently there is only the concatenation model
 params.input_size = 1024
 params.hidden_size = 128
-params.bs = 1
 model = OneDimensionalAffinityModel(params)
 # 6.train model
 if args.train:
@@ -43,10 +43,7 @@ if args.train:
     data_test.choose(["seq", "smiles", "logk"])
     loader_train = dataloader(data_train, params.bs)
     loader_test = dataloader(data_test, params.bs, False)
-    Train(
-        model,
-        loader_train,
-        loader_test, args)
+    Train(model, loader_train, loader_test, args)
 # 7.verify model
 # set environment
 # model.eval()

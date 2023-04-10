@@ -1,4 +1,5 @@
 from header import *
+
 argument_parser = argparse.ArgumentParser()
 argument_settings = {
     'epoch': 100,
@@ -13,6 +14,7 @@ argument_settings = {
     'l2': 0.0001,
     'l3': 10,
     'lr': 1e-4,  # learning rate
+    'detailed': True,
 }
 args = None
 
@@ -23,11 +25,11 @@ def initialize_parser(settings=argument_settings):
     global args
     for i in settings:
         if settings[i] == True:
-            argument_parser.add_argument('--' + i, action='store_true', help='')
+            argument_parser.add_argument('--' + i,
+                                         action='store_true',
+                                         help='')
         else:
-            argument_parser.add_argument(
-                '--' + i,
-                type=type(
-                    settings[i]),
-                default=settings[i])
+            argument_parser.add_argument('--' + i,
+                                         type=type(settings[i]),
+                                         default=settings[i])
     return argument_parser.parse_args()

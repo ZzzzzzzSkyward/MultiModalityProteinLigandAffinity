@@ -32,4 +32,7 @@ def read(path):
 
 
 if __name__ == '__main__':
-    read("C:/Users/Zhu/Desktop/fsdownload/log.txt")
+    try:
+        read("C:/Users/Zhu/Desktop/fsdownload/log.txt")
+    except:
+        read("C:/Users/Administrator/Desktop/fsdownload/log.txt")
