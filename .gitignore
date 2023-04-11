@@ -1,4 +1,5 @@
 *.pth
 .vscode
 __pycache__
-TopologyNet
+*.pyc
+*.pyo

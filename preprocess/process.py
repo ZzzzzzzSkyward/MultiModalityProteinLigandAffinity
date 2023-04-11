@@ -285,6 +285,7 @@ def generate_adjacency_matrices(file_set, file_path, output_file):
 
 
 # 注意，通过计算哈希值来确定蛋白质或配体是否相同，只能用于格式统一的数据集
+# 不靠谱，已弃用
 
 
 def get_pdb_hash(file_path):
