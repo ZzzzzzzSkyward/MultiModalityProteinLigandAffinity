@@ -7,7 +7,6 @@ from rdkit.Chem import AllChem
 from ast import dump
 from site import ENABLE_USER_SITE
 import tqdm
-import hashlib
 from imghdr import tests
 import shutil
 import random
@@ -34,7 +33,7 @@ pairs_length = len([
 ])
 # 本次任务处理的集合
 num_size = 5319
-percent_train = 0.7
+percent_train = 0.9
 protein_seq_maxlength = 1024
 
 # 读取PDB文件
@@ -315,7 +314,7 @@ def get_mol2_hash(file_path):
 
 
 hash_record = {}
-hashfile = data_path + "hash_record.json"
+hashfile = PDBBindDir + "ligands.json"
 
 
 def read_hash_record():
@@ -323,6 +322,8 @@ def read_hash_record():
     if os.path.exists(hashfile):
         with open(hashfile, "r", encoding="utf-8") as f:
             hash_record = json.load(f)
+    else:
+        print("no hash record file")
 
 
 def write_hash_record():
@@ -334,9 +335,12 @@ read_hash_record()
 
 
 def get_id(dirname, is_protein=False):
-    filename = f"{dirname}/{dirname}_protein.pdb" if is_protein else f"{dirname}/{dirname}_ligand.mol2"
-    if filename in hash_record:
-        return hash_record[filename]
+    #filename = f"{dirname}/{dirname}_protein.pdb" if is_protein else f"{dirname}/{dirname}_ligand.mol2"
+    if dirname in hash_record:
+        return hash_record[dirname][0 if is_protein else 1]
+    else:
+        print("error: no record for", dirname)
+        raise Exception
     hash_record[filename] = get_pdb_hash(
         filename) if is_protein else get_mol2_hash(filename)
     return hash_record[filename]
@@ -384,18 +388,23 @@ def split_dataset():
             #shutil.copytree(src_path, dest_path)
             protein_name = get_id(pair, is_protein=True)
             ligand_name = get_id(pair, is_protein=False)
-            known_proteins.add(protein_name)
-            known_ligands.add(ligand_name)
-            trains.add(pair)
-        else:
-            protein_name = get_id(pair, is_protein=True)
-            ligand_name = get_id(pair, is_protein=False)
-            if protein_name not in known_proteins or ligand_name not in known_ligands:
-                #dest_path = os.path.join(test_path, pair)
-                #src_path = os.path.join(data_path, pair)
-                #shutil.copytree(src_path, dest_path)
+            if random.random(
+            ) < 0.9 or protein_name not in known_proteins and ligand_name not in known_ligands:
+                known_proteins.add(protein_name)
+                known_ligands.add(ligand_name)
+                trains.add(pair)
+            else:
                 tests.add(pair)
-    write_hash_record()
+        else:
+            #protein_name = get_id(pair, is_protein=True)
+            #ligand_name = get_id(pair, is_protein=False)
+            # if protein_name not in known_proteins or ligand_name not in known_ligands:
+            #dest_path = os.path.join(test_path, pair)
+            #src_path = os.path.join(data_path, pair)
+            #shutil.copytree(src_path, dest_path)
+            tests.add(pair)
+    num_train = len(trains)
+    #write_hash_record()
     # 进一步细分测试集
     test_protein_only = set()
     test_ligand_only = set()
@@ -404,17 +413,23 @@ def split_dataset():
     for pair in tests:
         protein_name = get_id(pair, is_protein=True)
         ligand_name = get_id(pair, is_protein=False)
-        if protein_name not in known_proteins and ligand_name in known_ligands:
-            test_protein_only.add(pair)
-        elif protein_name in known_proteins and ligand_name not in known_ligands:
-            test_ligand_only.add(pair)
-        elif protein_name not in known_proteins and ligand_name not in known_ligands:
+        test_proteins.add(protein_name)
+        test_ligands.add(ligand_name)
+        if protein_name not in known_proteins and ligand_name not in known_ligands:
             test_both_none.add(pair)
+        elif ligand_name not in known_ligands:
+            test_ligand_only.add(pair)
+        elif protein_name not in known_proteins:
+            test_protein_only.add(pair)
         else:
             test_both_present.add(pair)
+    if len(test_ligand_only) == 0:
+        #return 0
+        pass
     dump_set("test_protein_only", test_protein_only)
     dump_set("test_ligand_only", test_ligand_only)
     dump_set("test_both_none", test_both_none)
+    dump_set("test_both_present", test_both_present)
     dump_set("train", trains)
     dump_set("all", trains | tests)
     print(
@@ -425,8 +440,8 @@ def split_dataset():
     print(f"测试集|{len(test_proteins)}|{len(test_ligands)}")
     print(f"蛋白质测试集|{len(test_protein_only)}|")
     print(f"化合物测试集| |{len(test_ligand_only)}")
-    print(f"配对测试集|{len(test_both_none)}")
-    print(f"非测试集|{len(test_both_present)}")
+    print(f"没有测试集|{len(test_both_none)}")
+    print(f"出现测试集|{len(test_both_present)}")
 
 
 cached_files = {}
@@ -447,8 +462,9 @@ def zip_train_test_files(path=output_path, compress=False):
     """
     # 获取所有以 train 和 test 开头的文件路径
     file_paths = [
-        path + f for f in os.listdir(path) if os.path.isfile(path + f) and (
-            f.startswith('train') or f.startswith('test')) and '.' not in f
+        path + f for f in os.listdir(path)
+        if os.path.isfile(path + f) and (f.startswith('train') or f.startswith(
+            'test') or f == "all") and '.' not in f
     ]
 
     # 创建 zip 文件并添加文件
@@ -459,15 +475,42 @@ def zip_train_test_files(path=output_path, compress=False):
             zipf.write(file_path, arcname=os.path.basename(file_path))
 
 
-all = ["train", "test_protein_only", "test_ligand_only", "test_both_none"]
+def split_zernike(splitset):
+    # 加载npy格式的矩阵
+    matrix = np.load(output_path + 'data_matrix.npy')
+
+    # 读取trainid.txt文件中的训练矩阵子集
+    pdbids = read_filelist(splitset)
+
+    # 读取pdbid.txt文件中的PDB ID列表
+    with open(PDBBindDir + 'pdbid.txt', 'r', encoding='utf-8') as f:
+        pdb_ids = [line.strip() for line in f]
+
+    # 确定训练矩阵子集的列索引c
+    indices = []
+    for dirname in pdbids:
+        pdbid = get_id(dirname, True)
+        indices.append(pdb_ids.index(pdbid))
+
+    # 提取trainid.txt中的训练矩阵子集
+    split_matrix = matrix[indices, :]
+
+    dump_npy(splitset + "_zernike", split_matrix)
+
+
+all = [
+    "train", "test_protein_only", "test_ligand_only", "test_both_none",
+    "test_both_present"
+]
 if __name__ == "__main__":
     #split_dataset()
     # for i in ["test_both_none"]:
-    # for i in []:
-    # for i in ["train"]:
-    #for i in all:
-    for i in ["train", "test_both_none"]:
-        extract_seq_from_file(i)
-        generate_compound_1d(i)
-        extract_protein_compound_label(i)
-    # zip_train_test_files()
+    for i in []:
+        # for i in ["train"]:
+        #for i in all:
+        #for i in ["train", "test_both_none"]:
+        #extract_seq_from_file(i)
+        #generate_compound_1d(i)
+        #extract_protein_compound_label(i)
+        split_zernike(i)
+    zip_train_test_files()

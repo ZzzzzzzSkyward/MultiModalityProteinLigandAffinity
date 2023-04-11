@@ -3,7 +3,7 @@ import csv
 
 def read_all_losses_from_log(log_file_path):
     train_losses, test_losses = [], []
-    with open(log_file_path, 'r') as f:
+    with open(log_file_path, 'r',encoding='utf-8') as f:
         for line in f:
             if 'train.loss' in line and 'test.loss' in line:
                 # 提取训练和测试损失
@@ -18,7 +18,7 @@ def read_all_losses_from_log(log_file_path):
 
 
 def save_losses_to_csv(train_losses, test_losses, csv_file_path):
-    with open(csv_file_path, 'w', newline='') as f:
+    with open(csv_file_path, 'w', newline='',encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow(['Train Losses', 'Test Losses'])
         for i in range(len(train_losses)):

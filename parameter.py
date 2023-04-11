@@ -4,9 +4,9 @@ from header import *
 
 
 class param:
-    l0 = 0
-    l1 = 0
-    l2 = 0
+    l0 = 0.001
+    l1 = 0.001
+    l2 = 0.001
     l3 = 0
     lr = 1e-4  # learning_rate
     bs = 32  # batch_size
