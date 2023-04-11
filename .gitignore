@@ -3,3 +3,7 @@
 __pycache__
 *.pyc
 *.pyo
+cross_modularity_torch
+finetune_torch
+data_processed
+pretrain_torch
