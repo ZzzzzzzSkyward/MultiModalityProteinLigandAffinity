@@ -1,3 +1,4 @@
+from torch.nn.modules.batchnorm import BatchNorm1d
 from header import *
 
 
@@ -64,15 +65,22 @@ class OneDimensionalAffinityModel(nn.Module):
         protein_input_size, hidden_size, dropout_prob = params.input_size, params.hidden_size, params.dropout
         compound_input_size = protein_input_size
         output_size = 1
+        next_size = max(output_size, int(hidden_size / 4))
         super().__init__()
         self.protein_rnn = ProteinRNN(protein_input_size, hidden_size)
         self.compound_rnn = CompoundRNN(compound_input_size, hidden_size)
         self.fc = nn.Sequential(
             #nn.Linear(hidden_size * 2, hidden_size),
             nn.Linear(hidden_size * 4, hidden_size),
-            nn.Dropout(dropout_prob),
+            nn.BatchNorm1d(hidden_size),
+            nn.Dropout(p=dropout_prob),
             nn.Mish(),
-            nn.Linear(hidden_size, output_size))
+            nn.Linear(hidden_size, next_size),
+            nn.BatchNorm1d(next_size),
+            nn.Dropout(p=dropout_prob),
+            nn.Sigmoid(),
+            nn.Linear(next_size, output_size),
+        )
 
     def forward(self, protein_seq, compound_seq):
         protein_out = self.protein_rnn(protein_seq)

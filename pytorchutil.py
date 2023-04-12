@@ -54,3 +54,22 @@ def move_to(*tensors, device=None):
         else:
             moved_tensors.append(tensor)
     return tuple(moved_tensors)
+
+
+def load_checkpoint(path, device=None):
+    full_path = './weights/' + path + ".pth"
+    if not os.path.exists(full_path):
+        raise Exception("Checkpoint not found: {}".format(path))
+    return torch.load(full_path, map_location=device)
+
+
+def save_checkpoint(model, optimizer, epoch, min_test_loss, path):
+    if not os.path.exists('./weights'):
+        os.makedirs('./weights')
+    torch.save(
+        {
+            'epoch': epoch,
+            'min_test_loss': min_test_loss,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict()
+        }, './weights/' + path + ".pth")

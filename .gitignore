@@ -3,7 +3,8 @@
 __pycache__
 *.pyc
 *.pyo
-cross_modularity_torch
+cross_modality_torch
 finetune_torch
 data_processed
 pretrain_torch
+*.log

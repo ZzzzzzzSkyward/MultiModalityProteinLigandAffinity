@@ -5,9 +5,10 @@ from measurement import *
 from pytorchutil import *
 
 
-def train(model, loader_train, optimizer, criterion):
+def train(model, loader, optimizer, criterion):
     total_loss = 0
-    for batch, (input1, input2, labels) in enumerate(loader_train):
+    length = len(loader)
+    for batch, (input1, input2, labels) in enumerate(loader):
         #print(input1.shape, input2.shape, labels.shape)
         input1, input2, labels = move_to(input1, input2, labels, device=DEVICE)
         outputs = model(input1, input2)
@@ -19,13 +20,14 @@ def train(model, loader_train, optimizer, criterion):
         nn.utils.clip_grad_value_(model.parameters(), 5)
         optimizer.step()
 
-    return total_loss
+    return total_loss / length
 
 
-def test(model, loader_test, criterion):
+def test(model, loader, criterion):
     total_loss = 0
+    length = len(loader)
     with torch.no_grad():
-        for batch, (input1, input2, labels) in enumerate(loader_test):
+        for batch, (input1, input2, labels) in enumerate(loader):
             input1, input2, labels = move_to(input1,
                                              input2,
                                              labels,
@@ -33,7 +35,7 @@ def test(model, loader_test, criterion):
             outputs = model(input1, input2)
             loss = criterion(outputs, labels)
             total_loss += getloss(loss)
-    return total_loss
+    return total_loss / length
 
 
 def Train(model, loader_train, loader_test, args):
@@ -55,7 +57,7 @@ def Train(model, loader_train, loader_test, args):
     min_test_loss = 1e4
     checkpoint_pth = "test_pth"
     if args.resume:
-        checkpoint = torch.load('./weights/' + checkpoint_pth+".pth")
+        checkpoint = load_checkpoint(checkpoint_pth, DEVICE)
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch'] + 1
@@ -75,13 +77,8 @@ def Train(model, loader_train, loader_test, args):
             epochloss2(epoch, train_loss, test_loss)
             if min_test_loss > test_loss:
                 min_test_loss = test_loss
-                torch.save(
-                    {
-                        'epoch': epoch,
-                        'min_test_loss': min_test_loss,
-                        'model_state_dict': model.state_dict(),
-                        'optimizer_state_dict': optimizer.state_dict()
-                    }, './weights/' + checkpoint_pth + ".pth")
+                save_checkpoint(checkpoint_pth, epoch, min_test_loss, model,optimizer)
+
 
     if epoch % 10 == 0:
         # test model

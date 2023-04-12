@@ -13,18 +13,26 @@ def _tocpu(y_pred, y_true):
     y_pred, y_true = y_pred.cpu().numpy(), y_true.cpu().numpy()
     return y_pred, y_true
 
+
 def getloss(l):
     return l.detach().cpu().numpy()
+
 
 def pearson(y_pred, y_true):
     return scipy.stats.pearsonr(y_pred, y_true)
 
 
-def rmse(y_pred, y_true):
+def rmse_torch(y_pred, y_true):
     mse = F.mse_loss(y_pred, y_true)
     rmse = torch.sqrt(mse)
     # .item会自动把数据搬回CPU
     return rmse.item()
+
+
+def rmse(y_pred, y_true):
+    mse = np.mean((y_pred - y_true)**2)
+    rmse = np.sqrt(mse)
+    return rmse
 
 
 def tau(y_pred, y_true):
@@ -36,14 +44,38 @@ def rho(y_pred, y_true):
 
 
 def four_of_them(y_pred, y_true):
-    y_pred, y_true = _preprocess(y_pred, y_true)
+    #y_pred, y_true = _preprocess(y_pred, y_true)
     y_rmse = rmse(y_pred, y_true)
     # 以下计算需要搬回CPU上做，因为numpy不支持GPU
+    #默认已经搬回来了
     y_pred, y_true = _tocpu(y_pred, y_true)
     y_pearson = pearson(y_pred, y_true)
     y_tau = tau(y_pred, y_true)
     y_rho = rho(y_pred, y_true)
     return y_pearson, y_rmse, y_tau, y_rho
+
+
+def evaluate_affinity(model, loader):
+    device = next(model.parameters()).device
+    val_list = []
+    pred_list = []
+    with torch.no_grad():
+        for batch in loader:
+            # 将数据移动到指定设备
+            batch = [item.to(device) for item in batch]
+            # 获取输入数据和目标数据
+            inputs, targets = batch[:-1], batch[-1]
+            # 计算模型的预测结果
+            outputs = model(*inputs)
+            # 将预测结果和目标数据转移到cpu上，并将tensor转换为numpy数组
+            pred, val = _preprocess(outputs, targets, True)
+            # 将预测结果和目标数据添加到列表中
+            pred_list.append(pred)
+            val_list.append(val)
+    # 将所有验证集和预测结果合并为一个大的数组
+    val_list = np.concatenate(val_list, axis=0)
+    pred_list = np.concatenate(pred_list, axis=0)
+    return four_of_them(pred_list, val_list)
 
 
 # TODO改写接触的AUPRC统计
@@ -55,8 +87,8 @@ def evaluate_contact(model, loader, prot_length, comp_length):
     batch = 0
     for prot_data, drug_data_ver, drug_data_adj, prot_contacts, prot_inter, prot_inter_exist, label in loader:
         with torch.no_grad():
-            inter, _ = model.forward_inter_affn(
-                prot_data, drug_data_ver, drug_data_adj, prot_contacts)
+            inter, _ = model.forward_inter_affn(prot_data, drug_data_ver,
+                                                drug_data_adj, prot_contacts)
 
         if batch != len(loader.dataset) // 32:
             y_true[batch * 32:(batch + 1) * 32] = prot_inter.cpu().numpy()
@@ -83,7 +115,8 @@ def contact_au_original(y_pred, y_true, prot_length, comp_length, ind):
             length_prot = int(prot_length[i])
             length_comp = int(comp_length[i])
             true_label_cut = np.asarray(y_true[i])[:length_prot, :length_comp]
-            true_label = np.reshape(true_label_cut, (length_prot * length_comp))
+            true_label = np.reshape(true_label_cut,
+                                    (length_prot * length_comp))
 
             full_matrix = np.asarray(y_pred[i])[:length_prot, :length_comp]
             pred_label = np.reshape(full_matrix, (length_prot * length_comp))
@@ -125,15 +158,14 @@ def calculate_AP_AUC(args):
     for label, pred in [(true_label, full_matrix),
                         (true_label_max, full_matrix_max)]:
         average_precision.append(
-            average_precision_score(
-                label.ravel(), pred.ravel()))
+            average_precision_score(label.ravel(), pred.ravel()))
         fpr_, tpr_, _ = roc_curve(label.ravel(), pred.ravel())
         fpr.append(fpr_)
         tpr.append(tpr_)
         roc_auc.append(auc(fpr_, tpr_))
 
-    return np.array([average_precision[0], roc_auc[0],
-                    average_precision[1], roc_auc[1]])
+    return np.array(
+        [average_precision[0], roc_auc[0], average_precision[1], roc_auc[1]])
 
 
 cpu = multiprocessing.cpu_count()
@@ -151,8 +183,11 @@ def contact_au(y_pred, y_true, protein_length, compound_length, ind):
     pool = multiprocessing.Pool(processes=num_processes)
 
     # 并行计算AP和AUC
-    AAAA = pool.map(calculate_AP_AUC, [(y_pred, y_true, int(protein_length), int(
-        compound_length))for i in range(length) if ind[i] != 0], chunksize=1)
+    AAAA = pool.map(
+        calculate_AP_AUC,
+        [(y_pred, y_true, int(protein_length), int(compound_length))
+         for i in range(length) if ind[i] != 0],
+        chunksize=1)
 
     # 关闭进程池
     pool.close()

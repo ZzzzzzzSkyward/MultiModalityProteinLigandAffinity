@@ -16,6 +16,7 @@ from dataset import *
 import pytorchutil as T
 # trainer
 from train_single import *
+from test_single import *
 # 2.choose environment
 # 3.define super parameters
 # currently there is only one model running
@@ -38,7 +39,7 @@ model = OneDimensionalAffinityModel(params)
 if args.train:
     # load data
     data_train = dataset("data_train", "train", DATA_DIR, "test_1")()
-    data_test = dataset("data_test", "test_both_none", DATA_DIR, "test_1")()
+    data_test = dataset("data_test", "test_both_present", DATA_DIR, "test_1")()
     data_train.choose(["seq", "smiles", "logk"])
     data_test.choose(["seq", "smiles", "logk"])
     loader_train = dataloader(data_train, params.bs)
@@ -46,5 +47,26 @@ if args.train:
     Train(model, loader_train, loader_test, args)
 # 7.verify model
 # set environment
-# model.eval()
-# Eval(model)
+if args.test:
+    # load data
+    data_test = dataset("data_test", "test_both_present", DATA_DIR, "test_1")()
+    data_test_ligand_only = dataset("data_test_ligand_only",
+                                    "test_ligand_only", DATA_DIR, "test_1")()
+    data_test_protein_only = dataset("data_test_protein_only",
+                                     "test_protein_only", DATA_DIR, "test_1")()
+    data_test_both_none = dataset("data_test_both_none", "test_both_none",
+                                  DATA_DIR, "test_1")()
+    data_test.choose(["seq", "smiles", "logk"])
+    data_test_ligand_only.choose(["seq", "smiles", "logk"])
+    data_test_protein_only.choose(["seq", "smiles", "logk"])
+    data_test_both_none.choose(["seq", "smiles", "logk"])
+    loader_test = dataloader(data_test, params.bs, False)
+    loader_test_ligand_only = dataloader(data_test_ligand_only, params.bs,
+                                         False)
+    loader_test_protein_only = dataloader(data_test_protein_only, params.bs,
+                                          False)
+    loader_test_both_none = dataloader(data_test_both_none, params.bs, False)
+    Eval(model, [
+        loader_test, loader_test_ligand_only, loader_test_protein_only,
+        loader_test_both_none
+    ], args)
