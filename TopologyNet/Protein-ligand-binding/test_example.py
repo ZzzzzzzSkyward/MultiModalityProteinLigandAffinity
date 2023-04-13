@@ -2,7 +2,7 @@
 # Javaplex                                                                                        |
 # download matlab-examples from https://github.com/appliedtopology/javaplex/releases/tag/4.3.1    |
 # unzip, rename the folder as javeplex and put it in the same folder where this script is         |
-# that is, put javaplex.jar in javaplex/
+# that is, put javaplex.jar in javaplex/                                                          |
 # -------------------------------------------------------------------------------------------------|
 # R-TDA                                                                                           |
 # install TDA package in R and properly set the R library path                                    |
@@ -23,11 +23,9 @@ import TopBio.PersistentHomology.PHComplex as PHComplex
 import TopBio.Feature.LigandFeature as LigandFeature
 import TopBio.Feature.ComplexFeature as ComplexFeature
 
+# 去掉os.system输出
 DEVNULL = open(os.devnull, 'w')
-
 os.oldsys = os.system
-
-forcestop = False
 
 
 def run(command):
@@ -36,8 +34,12 @@ def run(command):
 
 os.system = run
 
+forcestop = False
+skipfailed = True
+
 
 def fn(dirname):
+    global skipfailed
     global forcestop
     if forcestop:
         return
@@ -51,8 +53,9 @@ def fn(dirname):
         return
     # check if pqr file exists
     if not os.path.exists(working_dir + '/' + protein_name + '.pqr'):
-        # if there is a .log file, skip,because it is done before and failed
-        if os.path.exists(working_dir + '/' + protein_name + '.log'):
+        # if there is a .log file, skip, because it is done before and failed
+        if skipfailed and os.path.exists(
+                working_dir + '/' + protein_name + '.log'):
             return
         # generate one using pdb2pqr
         os.system("pdb2pqr --ff=AMBER --keep-chain " + working_dir + '/' +
@@ -73,6 +76,7 @@ def fn(dirname):
         PHComplex.Electrostatics_Rips(16.0, protein_name, working_dir)
         PHComplex.Alpha(50.0, protein_name, working_dir)
 
+    '''
     # TopBP-ML
     LigandFeature.GenerateFeature_alpha(ligand_name, working_dir)
     LigandFeature.GenerateFeature_level1(ligand_name, working_dir)
@@ -82,7 +86,6 @@ def fn(dirname):
     ComplexFeature.GenerateFeature_alpha_ML(protein_name, working_dir,
                                             'carbon')
     ComplexFeature.GenerateFeature_alpha_ML(protein_name, working_dir, 'heavy')
-    '''
         # TopBP-DL
         ComplexFeature.GenerateFeature_interaction_1DCNN(protein_name, working_dir)
         ComplexFeature.GenerateFeature_electrostatics_1DCNN(
@@ -122,7 +125,7 @@ def fn(dirname):
         ComplexFeature.GenerateFeature_alpha_1DCNN(protein_name, working_dir)
         ComplexFeature.GenerateFeature_alpha_2DCNN(protein_name, working_dir)
     '''
-    Clean = True
+    Clean = False
     if Clean:
         os.system('rm ' + working_dir + '/*.PH')
         os.system('rm ' + working_dir + '/*.csv')

@@ -39,7 +39,7 @@ def convert_to_dict(file_path):
 
 if __name__ == "__main__":
     # 读取数据并将其转换为JSON格式
-    data = convert_to_dict("D:\pdb\index\INDEX_refined_data.2020")
+    data = convert_to_dict("D:/pdb/index/INDEX_refined_data.2020")
 
     # 将JSON数据保存到文件中
     with open("ligands.json", "w") as f:
