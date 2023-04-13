@@ -3,14 +3,17 @@
 # download matlab-examples from https://github.com/appliedtopology/javaplex/releases/tag/4.3.1    |
 # unzip, rename the folder as javeplex and put it in the same folder where this script is         |
 # that is, put javaplex.jar in javaplex/
-#-------------------------------------------------------------------------------------------------|
+# -------------------------------------------------------------------------------------------------|
 # R-TDA                                                                                           |
 # install TDA package in R and properly set the R library path                                    |
-#-------------------------------------------------------------------------------------------------|
+# -------------------------------------------------------------------------------------------------|
 # Python packages                                                                                 |
 # Numpy, Pickle                                                                                   |
-#--------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 
+import threading
+from multiprocessing import Pool
+import numpy as np
 import os
 import TopBio.ReadFile.ReadMOL2 as ReadMOL2
 import TopBio.ReadFile.ReadPDB as ReadPDB
@@ -24,6 +27,8 @@ DEVNULL = open(os.devnull, 'w')
 
 os.oldsys = os.system
 
+forcestop = False
+
 
 def run(command):
     os.oldsys(f'{command} > ' + os.devnull)
@@ -33,25 +38,31 @@ os.system = run
 
 
 def fn(dirname):
-    print(dirname)
+    global forcestop
+    if forcestop:
+        return
     working_dir = 'z:/refined-set/' + dirname
-    ligand_name = dirname + '_ligand'
     protein_name = dirname + '_protein'
-    #check if 1a8i_protein_feature_complex_alpha_1DCNN is there
+    print(dirname)
+    ligand_name = dirname + '_ligand'
+    # check if 1a8i_protein_feature_complex_alpha_1DCNN is there
     if os.path.exists(working_dir + '/' + protein_name +
                       "_feature_complex_alpha_1DCNN.npy"):
         return
-    #check if pqr file exists
+    # check if pqr file exists
     if not os.path.exists(working_dir + '/' + protein_name + '.pqr'):
-        #generate one using pdb2pqr
+        # if there is a .log file, skip,because it is done before and failed
+        if os.path.exists(working_dir + '/' + protein_name + '.log'):
+            return
+        # generate one using pdb2pqr
         os.system("pdb2pqr --ff=AMBER --keep-chain " + working_dir + '/' +
                   protein_name + '.pdb ' + working_dir + '/' + protein_name +
                   '.pqr')
-    #check if pqr file exists
+    # check if pqr file exists
     if not os.path.exists(working_dir + '/' + protein_name + '.pqr'):
         print('pqr file not found for', dirname)
         return
-    #check if .pkl file exists
+    # check if .pkl file exists
     if not os.path.exists(working_dir + '/' + protein_name + '_alpha.pkl'):
         a = ReadMOL2.SmallMolecule(ligand_name, working_dir)
         PHSmallMolecule.Level1_Rips(a, ligand_name, working_dir)
@@ -120,12 +131,9 @@ def fn(dirname):
         os.system('rm ' + working_dir + '/tmp.out')
 
 
-import numpy as np
-
-
 def loop():
     arr = os.listdir('z:/refined-set')
-    #shuffle
+    # shuffle
     np.random.shuffle(arr)
     for i in arr:
         try:
@@ -134,18 +142,17 @@ def loop():
             print(e)
 
 
-from multiprocessing import Pool
-
-
 def loop_multi():
     arr = os.listdir('z:/refined-set')
     # shuffle
-    np.random.shuffle(arr)
-    #get 10 of them
-    #arr = arr[:10]
+    # np.random.shuffle(arr)
+    # get 10 of them
+    # arr = arr[:10]
+    # filter out the ones that starts with 1
+    #arr = [i for i in arr if i[0] == '1']
 
     # define the number of processes to use
-    num_processes = 7
+    num_processes = 8
 
     # create a process pool with the specified number of processes
     pool = Pool(processes=num_processes)
@@ -160,3 +167,11 @@ def loop_multi():
 
 if __name__ == '__main__':
     loop_multi()
+
+
+def run_thread_loop():
+    # run loop_multi from thread
+    t = threading.Thread(target=loop_multi)
+    t.start()
+    # leave it at background
+    # set forcestop=True to exit
