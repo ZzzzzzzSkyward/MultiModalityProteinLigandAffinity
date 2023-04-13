@@ -1,4 +1,5 @@
 # 该文件用于处理PDBBind2020数据集
+from re import L
 import zipfile
 from functools import cache
 import itertools
@@ -20,7 +21,7 @@ import pandas as pd
 import os
 import sys
 import warnings
-#去掉rdkit的警告
+# 去掉rdkit的警告
 warnings.filterwarnings("ignore")
 # 参数定义
 PDBBindDir = "D:/pdb/"
@@ -97,7 +98,7 @@ def pdb_parse(filename):
     for model in structure:
         # 遍历每个链
         for chain in model:
-            #print(chain.id)
+            # print(chain.id)
             # 提取氨基酸序列
             # sequence = [aa_dict.get(residue.get_resname(), '')  # 扔掉不是氨基酸的东西
             sequence = [
@@ -405,7 +406,7 @@ def split_dataset():
             #shutil.copytree(src_path, dest_path)
             tests.add(pair)
     num_train = len(trains)
-    #write_hash_record()
+    # write_hash_record()
     # 进一步细分测试集
     test_protein_only = set()
     test_ligand_only = set()
@@ -425,7 +426,7 @@ def split_dataset():
         else:
             test_both_present.add(pair)
     if len(test_ligand_only) == 0:
-        #return 0
+        # return 0
         pass
     dump_set("test_protein_only", test_protein_only)
     dump_set("test_ligand_only", test_ligand_only)
@@ -499,19 +500,92 @@ def split_zernike(splitset):
     dump_npy(splitset + "_zernike", split_matrix)
 
 
+def analyze_data():
+    train_file, test_protein_only_file, test_ligand_only_file, test_both_present_file, test_both_none_file = output_path + "train", output_path + \
+        "test_protein_only", output_path + "test_ligand_only", output_path + \
+        "test_both_present", output_path + "test_both_none"
+    # 打开五个文件并读取其中的pdbid
+    with open(train_file, 'r') as f:
+        train_data = set(line.strip() for line in f)
+    with open(test_protein_only_file, 'r') as f:
+        test_protein_only_data = set(line.strip() for line in f)
+    with open(test_ligand_only_file, 'r') as f:
+        test_ligand_only_data = set(line.strip() for line in f)
+    with open(test_both_present_file, 'r') as f:
+        test_both_present_data = set(line.strip() for line in f)
+    with open(test_both_none_file, 'r') as f:
+        test_both_none_data = set(line.strip() for line in f)
+
+    # 分别计算train和test集合中的蛋白质、配体数目和蛋白质-配体对数目
+    train_proteins = set()
+    train_ligands = set()
+    train_pairs = set()
+    for pair in train_data:
+        protein, ligand = get_id(pair, True), get_id(pair, False)
+        train_proteins.add(protein)
+        train_ligands.add(ligand)
+        train_pairs.add(pair)
+
+    test_proteins = set()
+    test_ligands = set()
+    test_pairs = set()
+    val_ligands = set()
+    val_proteins = set()
+    for pair in test_both_present_data:
+        protein, ligand = get_id(pair, True), get_id(pair, False)
+        val_ligands.add(ligand)
+        val_proteins.add(protein)
+    print("Val Set:")
+    print(f'{len(val_proteins)},{len(val_ligands)}')
+    for pair in test_protein_only_data.union(
+            test_ligand_only_data,
+            test_both_none_data):
+        protein, ligand = get_id(pair, True), get_id(pair, False)
+        test_proteins.add(protein)
+        test_ligands.add(ligand)
+        if pair in train_pairs:
+            continue
+        test_pairs.add(pair)
+
+    # 输出分析结果
+    print("Train dataset:")
+    print(f"Number of protein-ligand pairs: {len(train_pairs)}")
+    print(f"Number of unique proteins: {len(train_proteins)}")
+    print(f"Number of unique ligands: {len(train_ligands)}")
+
+    print("\nTest dataset:")
+    print(f"Number of protein-ligand pairs: {len(test_pairs)}")
+    print(f"Number of unique proteins: {len(test_proteins)}")
+    print(f"Number of unique ligands: {len(test_ligands)}")
+
+    # 计算test集合中不存在于train集合中的蛋白质、配体数目和蛋白质-配体对数目
+    test_proteins_not_in_train = test_proteins - train_proteins
+    test_ligands_not_in_train = test_ligands - train_ligands
+    test_pairs_not_in_train = test_pairs - train_pairs
+
+    print("\nTest dataset - Not in train dataset:")
+    print(
+        f"Number of unique proteins not in train dataset: {len(test_proteins_not_in_train)}")
+    print(
+        f"Number of unique ligands not in train dataset: {len(test_ligands_not_in_train)}")
+    print(
+        f"Number of protein-ligand pairs not in train dataset: {len(test_pairs_not_in_train)}")
+
+
 all = [
     "train", "test_protein_only", "test_ligand_only", "test_both_none",
     "test_both_present"
 ]
 if __name__ == "__main__":
-    #split_dataset()
+    # split_dataset()
     # for i in ["test_both_none"]:
     for i in []:
         # for i in ["train"]:
-        #for i in all:
-        #for i in ["train", "test_both_none"]:
-        #extract_seq_from_file(i)
-        #generate_compound_1d(i)
-        #extract_protein_compound_label(i)
+        # for i in all:
+        # for i in ["train", "test_both_none"]:
+        # extract_seq_from_file(i)
+        # generate_compound_1d(i)
+        # extract_protein_compound_label(i)
         split_zernike(i)
-    zip_train_test_files()
+    # zip_train_test_files()
+    # analyze_data()

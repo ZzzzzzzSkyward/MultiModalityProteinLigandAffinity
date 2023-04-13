@@ -43,16 +43,17 @@ def rho(y_pred, y_true):
     return scipy.stats.spearmanr(y_pred, y_true)
 
 
-def four_of_them(y_pred, y_true):
+def five_of_them(y_pred, y_true):
     #y_pred, y_true = _preprocess(y_pred, y_true)
     y_rmse = rmse(y_pred, y_true)
     # 以下计算需要搬回CPU上做，因为numpy不支持GPU
     #默认已经搬回来了
-    y_pred, y_true = _tocpu(y_pred, y_true)
+    #y_pred, y_true = _tocpu(y_pred, y_true)
     y_pearson = pearson(y_pred, y_true)
     y_tau = tau(y_pred, y_true)
     y_rho = rho(y_pred, y_true)
-    return y_pearson, y_rmse, y_tau, y_rho
+    #cc=contact_au(y_pred, y_true)
+    return y_pearson, y_rmse, y_tau, y_rho#,cc
 
 
 def evaluate_affinity(model, loader):
@@ -75,7 +76,7 @@ def evaluate_affinity(model, loader):
     # 将所有验证集和预测结果合并为一个大的数组
     val_list = np.concatenate(val_list, axis=0)
     pred_list = np.concatenate(pred_list, axis=0)
-    return four_of_them(pred_list, val_list)
+    return five_of_them(pred_list, val_list)
 
 
 # TODO改写接触的AUPRC统计
@@ -99,7 +100,7 @@ def evaluate_contact(model, loader, prot_length, comp_length):
             y_pred[batch * 32:] = inter.detach().cpu().numpy()
             ind[batch * 32:] = prot_inter_exist.cpu().numpy()
         batch += 1
-    contact_au(y_pred, y_true, prot_length, comp_length, ind)
+    return contact_au(y_pred, y_true, prot_length, comp_length, ind)
 
 
 def contact_au_original(y_pred, y_true, prot_length, comp_length, ind):
@@ -185,7 +186,7 @@ def contact_au(y_pred, y_true, protein_length, compound_length, ind):
     # 并行计算AP和AUC
     AAAA = pool.map(
         calculate_AP_AUC,
-        [(y_pred, y_true, int(protein_length), int(compound_length))
+        [(y_pred, y_true, protein_length,compound_length)
          for i in range(length) if ind[i] != 0],
         chunksize=1)
 

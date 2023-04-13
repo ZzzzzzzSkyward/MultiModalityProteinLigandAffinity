@@ -73,12 +73,13 @@ class OneDimensionalAffinityModel(nn.Module):
             #nn.Linear(hidden_size * 2, hidden_size),
             nn.Linear(hidden_size * 4, hidden_size),
             nn.BatchNorm1d(hidden_size),
+            nn.Mish(inplace=True),
             nn.Dropout(p=dropout_prob),
-            nn.Mish(),
             nn.Linear(hidden_size, next_size),
+            # nn.MaxPool1d(2),
             nn.BatchNorm1d(next_size),
+            nn.Mish(inplace=True),
             nn.Dropout(p=dropout_prob),
-            nn.Sigmoid(),
             nn.Linear(next_size, output_size),
         )
 

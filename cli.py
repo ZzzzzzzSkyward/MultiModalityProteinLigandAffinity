@@ -7,6 +7,7 @@ argument_settings = {
     'data_processed_dir': './data_processed/',
     'data_pretrain_dir': './data_pretrain/',
     'train': True,
+    'test': True,
     'tofile': True,
     'batch_size': 32,
     'l0': 0.01,
@@ -15,6 +16,8 @@ argument_settings = {
     'l3': 10,
     'lr': 1e-4,  # learning rate
     'detailed': True,
+    'dropout': 0.1,
+    'train_add': True,
 }
 args = None
 
