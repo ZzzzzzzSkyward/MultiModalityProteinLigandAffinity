@@ -12,6 +12,7 @@
 # --------------------------------------------------------------------------------------------------
 
 import threading
+from tqdm import tqdm
 from multiprocessing import Pool
 import numpy as np
 import os
@@ -174,9 +175,10 @@ def loop_multi():
     # processes=num_processes
     # create a process pool with the specified number of processes
     pool = Pool()
-
+    pbar = tqdm(total=len(arr))
     # map the function fn to each element in the shuffled array
-    results = pool.map(fn, arr)
+    for result in pool.imap_unordered(fn, arr):
+        pbar.update(1)
 
     # close the process pool
     pool.close()

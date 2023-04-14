@@ -90,3 +90,59 @@ class OneDimensionalAffinityModel(nn.Module):
         output = self.fc(concat_hidden)
         output = output.flatten()
         return output
+
+
+class ProteinAutoEncoder(nn.Module):
+    def __init__(self, embedding_dim, hidden_dim, vocab_size,
+                 num_layers=2, num_heads=8, dropout=0.1):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.gru_encoder = nn.GRU(
+            input_size=embedding_dim,
+            hidden_size=hidden_dim,
+            num_layers=num_layers,
+            batch_first=True,
+            bidirectional=True
+        )
+        self.gru_decoder = nn.GRU(
+            input_size=hidden_dim,
+            hidden_size=hidden_dim,
+            num_layers=num_layers,
+            batch_first=True,
+            bidirectional=True
+        )
+        self.attention = nn.MultiheadAttention(
+            embed_dim=hidden_dim * 2,
+            num_heads=num_heads,
+            dropout=dropout
+        )
+        self.linear = nn.Linear(hidden_dim * 2, vocab_size)
+
+    def forward(self, input_seq):
+        # Embedding
+        embedded = self.embedding(input_seq)
+
+        # Encoding
+        encoder_output, hidden = self.gru_encoder(embedded)
+
+        # Decoding with self-attention and residual connection
+        decoder_input = encoder_output[:, -1, :].unsqueeze(1)
+        decoder_output, _ = self.gru_decoder(decoder_input, hidden)
+        decoder_output = F.relu(decoder_output)
+        decoder_output = F.dropout(
+            decoder_output, p=0.5, training=self.training)
+        decoder_output = decoder_output + decoder_input  # Residual connection
+        query = decoder_output.transpose(0, 1)
+        key = encoder_output.transpose(0, 1)
+        value = encoder_output.transpose(0, 1)
+        decoder_output, _ = self.attention(query, key, value)
+        decoder_output = decoder_output.transpose(0, 1)
+        decoder_output = F.relu(decoder_output)
+        decoder_output = F.dropout(
+            decoder_output, p=0.5, training=self.training)
+        decoder_output = decoder_output + decoder_input  # Residual connection
+
+        # Decoding with linear layer
+        decoded = self.linear(decoder_output)
+
+        return decoded
