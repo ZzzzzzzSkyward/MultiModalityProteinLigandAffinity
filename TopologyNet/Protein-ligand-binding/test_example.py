@@ -38,12 +38,27 @@ forcestop = False
 skipfailed = True
 
 
+def gen_pqr(dirname):
+    working_dir = 'z:/refined-set/' + dirname
+    if not os.path.exists(working_dir):
+        return
+    protein_name = dirname + '_protein'
+    if os.path.exists(working_dir + '/' + protein_name + '.pqr'):
+        return
+    print(dirname)
+    os.system("pdb2pqr --ff=AMBER --keep-chain " + working_dir + '/' +
+              protein_name + '.pdb ' + working_dir + '/' + protein_name +
+              '.pqr')
+
+
 def fn(dirname):
     global skipfailed
     global forcestop
     if forcestop:
         return
     working_dir = 'z:/refined-set/' + dirname
+    if not os.path.exists(working_dir):
+        return
     protein_name = dirname + '_protein'
     print(dirname)
     ligand_name = dirname + '_ligand'
@@ -55,7 +70,7 @@ def fn(dirname):
     if not os.path.exists(working_dir + '/' + protein_name + '.pqr'):
         # if there is a .log file, skip, because it is done before and failed
         if skipfailed and os.path.exists(
-                working_dir + '/' + protein_name + '.log'):
+                working_dir + '/' + protein_name + '.log'):  # and not os.path.exists(working_dir + '/' + 'tmp.out'):
             return
         # generate one using pdb2pqr
         os.system("pdb2pqr --ff=AMBER --keep-chain " + working_dir + '/' +
@@ -137,7 +152,7 @@ def fn(dirname):
 def loop():
     arr = os.listdir('z:/refined-set')
     # shuffle
-    np.random.shuffle(arr)
+    # np.random.shuffle(arr)
     for i in arr:
         try:
             fn(i)
@@ -148,17 +163,17 @@ def loop():
 def loop_multi():
     arr = os.listdir('z:/refined-set')
     # shuffle
-    # np.random.shuffle(arr)
+    np.random.shuffle(arr)
     # get 10 of them
     # arr = arr[:10]
     # filter out the ones that starts with 1
-    #arr = [i for i in arr if i[0] == '1']
+    # arr = [i for i in arr if i[0] == '1']
 
     # define the number of processes to use
-    num_processes = 8
-
+    # num_processes = 8
+    # processes=num_processes
     # create a process pool with the specified number of processes
-    pool = Pool(processes=num_processes)
+    pool = Pool()
 
     # map the function fn to each element in the shuffled array
     results = pool.map(fn, arr)
@@ -170,6 +185,7 @@ def loop_multi():
 
 if __name__ == '__main__':
     loop_multi()
+    # loop()
 
 
 def run_thread_loop():
