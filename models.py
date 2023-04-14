@@ -93,8 +93,13 @@ class OneDimensionalAffinityModel(nn.Module):
 
 
 class ProteinAutoEncoder(nn.Module):
-    def __init__(self, embedding_dim, hidden_dim, vocab_size,
-                 num_layers=2, num_heads=8, dropout=0.1):
+    def __init__(self, params):
+        embedding_dim = 1024
+        hidden_dim = 128
+        vocab_size = 1024
+        num_layers = 2
+        num_heads = 8
+        dropout = params.dropout
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
         self.gru_encoder = nn.GRU(

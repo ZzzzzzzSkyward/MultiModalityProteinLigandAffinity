@@ -142,7 +142,7 @@ def Alpha(cut, protein_name, working_dir):
                 tmpinfile = open(working_dir + '/tmp.out')
                 lines = tmpinfile.read().splitlines()
                 for line in lines[1:]:
-                    a, b, c, d = line.split()
+                    a, b, c, d = line.split()#此处报错
                     if d != 'Inf':
                         if float(d) - float(c) >= small:
                             Bars.append([int(b), float(c), float(d)])
