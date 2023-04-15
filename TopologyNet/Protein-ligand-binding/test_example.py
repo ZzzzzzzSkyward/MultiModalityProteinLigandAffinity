@@ -13,10 +13,7 @@
 
 import threading
 from tqdm import tqdm
-<<<<<<< HEAD
 from timeout import run
-=======
->>>>>>> e0bdf46a5d29960526095451f7b46ab32e9db6e2
 from multiprocessing import Pool
 import numpy as np
 import os
@@ -36,7 +33,6 @@ os.oldsys = os.system
 def runsys(command):
     #print(command)
     if command.find('matlab') >= 0:
-        print("run timeout")
         run(command,60)
     else:
         os.oldsys(f'{command} > ' + os.devnull)
@@ -215,18 +211,15 @@ def loop_multi():
     # define the number of processes to use
     # processes=num_processes
     # create a process pool with the specified number of processes
-<<<<<<< HEAD
     pool = Pool(processes=6)# too many processes can cause out of memory
     pbar = tqdm(total=len(arr))
     # map the function fn to each element in the shuffled array        return
     # fn(z)
     for result in pool.imap_unordered(tryfn, arr):
-=======
     pool = Pool()
     pbar = tqdm(total=len(arr))
     # map the function fn to each element in the shuffled array
     for result in pool.imap_unordered(fn, arr):
->>>>>>> e0bdf46a5d29960526095451f7b46ab32e9db6e2
         pbar.update(1)
 
     # close the process pool
