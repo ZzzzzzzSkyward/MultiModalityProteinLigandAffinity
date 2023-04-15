@@ -143,6 +143,7 @@ def Alpha(cut, protein_name, working_dir):
                           working_dir + '/tmp.out')
                 tmpinfile = open(working_dir + '/tmp.out')
                 lines = tmpinfile.read().splitlines()
+<<<<<<< HEAD
                 try:
                     for line in lines[1:]:
                         a, b, c, d = line.split()
@@ -151,6 +152,13 @@ def Alpha(cut, protein_name, working_dir):
                                 Bars.append([int(b), float(c), float(d)])
                 except BaseException:
                     return
+=======
+                for line in lines[1:]:
+                    a, b, c, d = line.split()#此处报错
+                    if d != 'Inf':
+                        if float(d) - float(c) >= small:
+                            Bars.append([int(b), float(c), float(d)])
+>>>>>>> e0bdf46a5d29960526095451f7b46ab32e9db6e2
                 BarCollection[name] = Bars
                 os.system('rm ' + working_dir + '/pt.csv')
 
