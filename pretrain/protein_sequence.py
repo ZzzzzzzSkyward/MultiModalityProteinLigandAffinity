@@ -15,7 +15,7 @@ from dataset import *
 # torch util
 import pytorchutil as T
 # trainer
-from train_single import *
+from pretrain_single import *
 from test_single import *
 # 2.choose environment
 # 3.define super parameters

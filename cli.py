@@ -1,5 +1,5 @@
 from header import *
-
+import time
 argument_parser = argparse.ArgumentParser()
 argument_settings = {
     'epoch': 100,
@@ -18,6 +18,7 @@ argument_settings = {
     'detailed': True,
     'dropout': 0.1,
     'train_add': True,
+    'name': 'test' + time.strftime("%m-%d %H:%M:%S", time.localtime())
 }
 args = None
 

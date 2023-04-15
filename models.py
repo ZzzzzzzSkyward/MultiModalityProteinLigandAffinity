@@ -93,35 +93,37 @@ class OneDimensionalAffinityModel(nn.Module):
 
 
 class ProteinAutoEncoder(nn.Module):
+    loss = nn.CrossEntropyLoss
+
     def __init__(self, params):
-        embedding_dim = 1024
-        hidden_dim = 128
-        vocab_size = 1024
+        embedding_size = 512
+        hidden_size = 64
+        input_size = 1024
         num_layers = 2
         num_heads = 8
         dropout = params.dropout
         super().__init__()
-        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.embedding = nn.Embedding(input_size, embedding_size)
         self.gru_encoder = nn.GRU(
-            input_size=embedding_dim,
-            hidden_size=hidden_dim,
+            input_size=embedding_size,
+            hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,
             bidirectional=True
         )
         self.gru_decoder = nn.GRU(
-            input_size=hidden_dim,
-            hidden_size=hidden_dim,
+            input_size=hidden_size * 2,  # bidirectional
+            hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,
             bidirectional=True
         )
         self.attention = nn.MultiheadAttention(
-            embed_dim=hidden_dim * 2,
+            embed_dim=hidden_size * 2,
             num_heads=num_heads,
             dropout=dropout
         )
-        self.linear = nn.Linear(hidden_dim * 2, vocab_size)
+        self.linear = nn.Linear(hidden_size * 2, input_size)
 
     def forward(self, input_seq):
         # Embedding
@@ -129,10 +131,9 @@ class ProteinAutoEncoder(nn.Module):
 
         # Encoding
         encoder_output, hidden = self.gru_encoder(embedded)
-
         # Decoding with self-attention and residual connection
         decoder_input = encoder_output[:, -1, :].unsqueeze(1)
-        decoder_output, _ = self.gru_decoder(decoder_input, hidden)
+        decoder_output, _ = self.gru_decoder(decoder_input)
         decoder_output = F.relu(decoder_output)
         decoder_output = F.dropout(
             decoder_output, p=0.5, training=self.training)
@@ -149,5 +150,6 @@ class ProteinAutoEncoder(nn.Module):
 
         # Decoding with linear layer
         decoded = self.linear(decoder_output)
+        decoded = decoded.squeeze(dim=1)
 
         return decoded

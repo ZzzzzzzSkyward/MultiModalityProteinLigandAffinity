@@ -75,7 +75,7 @@ def Train(model, loader_train, loader_test, args):
     progress = tqdm(range(num_epochs))
     start_epoch = 0
     min_test_loss = 1e4
-    checkpoint_pth = "test_pth"
+    checkpoint_pth = args.name if hasattr(args, "name") else "test_pth"
     if args.resume:
         checkpoint = load_checkpoint(checkpoint_pth, DEVICE)
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -128,7 +128,7 @@ def Train_Add(model, loader_train, loader_test, args):
     progress = tqdm(range(num_epochs))
     start_epoch = 0
     min_test_loss = 1e4
-    checkpoint_pth = "test_pth"
+    checkpoint_pth = args.name if hasattr(args, "name") else "test_pth"
     if args.resume:
         checkpoint = load_checkpoint(checkpoint_pth, DEVICE)
         model.load_state_dict(checkpoint['model_state_dict'])

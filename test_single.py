@@ -8,7 +8,7 @@ from pytorchutil import *
 def Eval(model, loaders, args):
     model.eval()
     # load data
-    checkpoint_pth = "test_pth"
+    checkpoint_pth = args.name if hasattr(args, "name") else "test_pth"
     if True:
         checkpoint = load_checkpoint(checkpoint_pth, DEVICE)
         model.load_state_dict(checkpoint['model_state_dict'])

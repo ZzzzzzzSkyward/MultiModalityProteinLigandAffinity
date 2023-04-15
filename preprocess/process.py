@@ -572,11 +572,11 @@ def analyze_data():
         f"Number of protein-ligand pairs not in train dataset: {len(test_pairs_not_in_train)}")
 
 
-all = [
-    "train", "test_protein_only", "test_ligand_only", "test_both_none",
-    "test_both_present"
-]
 if __name__ == "__main__":
+    all = [
+        "train", "test_protein_only", "test_ligand_only", "test_both_none",
+        "test_both_present"
+    ]
     # split_dataset()
     # for i in ["test_both_none"]:
     for i in []:
