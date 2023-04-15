@@ -12,6 +12,8 @@
 # --------------------------------------------------------------------------------------------------
 
 import threading
+from tqdm import tqdm
+from timeout import run
 from multiprocessing import Pool
 import numpy as np
 import os
@@ -28,14 +30,44 @@ DEVNULL = open(os.devnull, 'w')
 os.oldsys = os.system
 
 
-def run(command):
-    os.oldsys(f'{command} > ' + os.devnull)
+def runsys(command):
+    #print(command)
+    if command.find('matlab') >= 0:
+        print("run timeout")
+        run(command,60)
+    else:
+        os.oldsys(f'{command} > ' + os.devnull)
 
 
-os.system = run
+os.system = runsys
+
+# 防止报错
+
+
+def trial(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            print(e)
+            pass
+    return wrapper
+
+
+class tryc:
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, *args, **kwargs):
+        try:
+            return self.func(*args, **kwargs)
+        except Exception as e:
+            # print(e)
+            pass
+
 
 forcestop = False
-skipfailed = True
+skipfailed = False
 
 
 def gen_pqr(dirname):
@@ -43,14 +75,16 @@ def gen_pqr(dirname):
     if not os.path.exists(working_dir):
         return
     protein_name = dirname + '_protein'
+    download_protein_name = dirname + "_output"
     if os.path.exists(working_dir + '/' + protein_name + '.pqr'):
         return
     print(dirname)
     os.system("pdb2pqr --ff=AMBER --keep-chain " + working_dir + '/' +
-              protein_name + '.pdb ' + working_dir + '/' + protein_name +
+              download_protein_name + '.pdb ' + working_dir + '/' + protein_name +
               '.pqr')
 
 
+@ tryc
 def fn(dirname):
     global skipfailed
     global forcestop
@@ -60,7 +94,7 @@ def fn(dirname):
     if not os.path.exists(working_dir):
         return
     protein_name = dirname + '_protein'
-    print(dirname)
+    # print(dirname)
     ligand_name = dirname + '_ligand'
     # check if 1a8i_protein_feature_complex_alpha_1DCNN is there
     if os.path.exists(working_dir + '/' + protein_name +
@@ -73,9 +107,8 @@ def fn(dirname):
                 working_dir + '/' + protein_name + '.log'):  # and not os.path.exists(working_dir + '/' + 'tmp.out'):
             return
         # generate one using pdb2pqr
-        os.system("pdb2pqr --ff=AMBER --keep-chain " + working_dir + '/' +
-                  protein_name + '.pdb ' + working_dir + '/' + protein_name +
-                  '.pqr')
+        # gen_pqr(dirname)
+        return
     # check if pqr file exists
     if not os.path.exists(working_dir + '/' + protein_name + '.pqr'):
         print('pqr file not found for', dirname)
@@ -153,11 +186,18 @@ def loop():
     arr = os.listdir('z:/refined-set')
     # shuffle
     # np.random.shuffle(arr)
+    pbar = tqdm(total=len(arr))
     for i in arr:
+        fn(i)
         try:
-            fn(i)
+            pbar.update(1)
         except Exception as e:
+            print(i)
             print(e)
+
+
+def tryfn(z):
+    return fn(z)
 
 
 def loop_multi():
@@ -170,13 +210,14 @@ def loop_multi():
     # arr = [i for i in arr if i[0] == '1']
 
     # define the number of processes to use
-    # num_processes = 8
     # processes=num_processes
     # create a process pool with the specified number of processes
-    pool = Pool()
-
-    # map the function fn to each element in the shuffled array
-    results = pool.map(fn, arr)
+    pool = Pool(processes=6)# too many processes can cause out of memory
+    pbar = tqdm(total=len(arr))
+    # map the function fn to each element in the shuffled array        return
+    # fn(z)
+    for result in pool.imap_unordered(tryfn, arr):
+        pbar.update(1)
 
     # close the process pool
     pool.close()
@@ -185,7 +226,7 @@ def loop_multi():
 
 if __name__ == '__main__':
     loop_multi()
-    # loop()
+    #loop()
 
 
 def run_thread_loop():
@@ -193,4 +234,4 @@ def run_thread_loop():
     t = threading.Thread(target=loop_multi)
     t.start()
     # leave it at background
-    # set forcestop=True to exit
+    # set forcestop=True to exit #???useless

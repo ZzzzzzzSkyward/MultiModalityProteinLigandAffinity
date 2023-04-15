@@ -26,7 +26,7 @@ def fn():
             progress.update(1)
             # zipf.write(temppath + file_path)
             unwanted = [
-                'pdb', 'mol2', 'sdf', 'log', 'csv', 'pts', 'ph', 'bds', 'out'
+                'pdb', 'mol2', 'sdf', 'log', 'csv', 'pts', 'PH', 'bds', 'out'
             ]
             flag = 0
             doneflag = 0
@@ -36,7 +36,7 @@ def fn():
                 if any(file.endswith(ext) for ext in unwanted):
                     continue
                 if file.endswith(
-                        'protein_feature_complex_interaction_1DCNN.npy'):
+                        'protein_feature_complex_alpha_1DCNN.npy'):
                     doneflag = 1
                 zipf.write(temppath + file_path + '/' + file)
                 flag = 1

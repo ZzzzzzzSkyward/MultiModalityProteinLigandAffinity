@@ -48,7 +48,8 @@ def Interaction_Rips(cut, protein_name, working_dir):
                                   '\n')
                 OutFile.close()
 
-    line = 'matlab -nodesktop -nosplash -r "DataDir=' + "'" + working_dir + "';pdb=" + "'" + protein_name + "'" + ';PH_complex_interaction"'
+    line = 'matlab -nodesktop -nosplash -r "DataDir=' + "'" + working_dir + \
+        "';pdb=" + "'" + protein_name + "'" + ';PH_complex_interaction"'
     os.system(line)
 
 
@@ -81,7 +82,8 @@ def Electrostatics_Rips(cut, protein_name, working_dir):
                                   str(PRO[j][4]) + '\n')
             OutFile.close()
 
-    line = 'matlab -nodesktop -nosplash -r "DataDir=' + "'" + working_dir + "';pdb=" + "'" + protein_name + "'" + ';PH_complex_charge"'
+    line = 'matlab -nodesktop -nosplash -r "DataDir=' + "'" + working_dir + \
+        "';pdb=" + "'" + protein_name + "'" + ';PH_complex_charge"'
     os.system(line)
 
 
@@ -112,12 +114,12 @@ def Alpha(cut, protein_name, working_dir):
         for el in LigEleCollection:
             propts = []
             for a in range(len(PRO)):
-                p=str(PRO[a][0], encoding='ascii')
+                p = str(PRO[a][0], encoding='ascii')
                 if p.replace(" ", "") in ep:
                     propts.append([PRO[a][1][0], PRO[a][1][1], PRO[a][1][2]])
             ligpts = []
             for a in range(len(LIG)):
-                p=str(LIG[a][0], encoding='ascii')
+                p = str(LIG[a][0], encoding='ascii')
                 if p.replace(" ", "") in el:
                     ligpts.append([LIG[a][1][0], LIG[a][1][1], LIG[a][1][2]])
             if len(propts) + len(ligpts) > 3:
@@ -141,11 +143,14 @@ def Alpha(cut, protein_name, working_dir):
                           working_dir + '/tmp.out')
                 tmpinfile = open(working_dir + '/tmp.out')
                 lines = tmpinfile.read().splitlines()
-                for line in lines[1:]:
-                    a, b, c, d = line.split()
-                    if d != 'Inf':
-                        if float(d) - float(c) >= small:
-                            Bars.append([int(b), float(c), float(d)])
+                try:
+                    for line in lines[1:]:
+                        a, b, c, d = line.split()
+                        if d != 'Inf':
+                            if float(d) - float(c) >= small:
+                                Bars.append([int(b), float(c), float(d)])
+                except BaseException:
+                    return
                 BarCollection[name] = Bars
                 os.system('rm ' + working_dir + '/pt.csv')
 
@@ -153,7 +158,7 @@ def Alpha(cut, protein_name, working_dir):
     for ep in ProEleCollection:
         propts = []
         for a in range(len(PRO)):
-            p=str(PRO[a][0], encoding='ascii')
+            p = str(PRO[a][0], encoding='ascii')
             if p.replace(" ", "") in ep:
                 propts.append([PRO[a][1][0], PRO[a][1][1], PRO[a][1][2]])
         if len(propts) > 3:
