@@ -2,7 +2,7 @@
 
 ## Motivation
 
-Recent protein-ligand affinity and contact prediction tasks mainly depends on amino acid sequence, 2d graph and chemical fingerprint data to extract the features of proteins and ligands. As an attempt, cross modality models are developed to combine the strengths of different views of molecules, which includes 1d+2d, 2d+3d pattern that either utilizes all modalities or treat some as priviledged resource. Considering the scarcity of high dimensional data, methods such as pretraining and unsupervised learning are also brought into this field. As another attempt, it is possible that multiple views of molecule containing varied features may as well enhance model's understanding of the protein, the ligand, and their interaction.
+Recent protein-ligand affinity and contact prediction tasks mainly focus on amino acid sequence, 2d graph and chemical fingerprint data to extract the features of proteins and ligands. As an attempt, cross modality models are developed to combine the strengths of different views of molecules, which includes 1d+2d, 2d+3d pattern that either utilizes all modalities or treat some as priviledged resource. Considering the scarcity of high dimensional data, methods such as pretraining and unsupervised learning are also brought into this field. As another attempt, it is possible that multiple views of molecule containing varied features may as well enhance model's understanding of the protein, the ligand, and their interaction.
 
 ## Results
 

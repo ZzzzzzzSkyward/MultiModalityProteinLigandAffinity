@@ -35,6 +35,8 @@ if args.tofile:
 params.input_size = 1024
 params.hidden_size = 128
 model = OneDimensionalAffinityModel(params)
+if args.pretrained:
+    model = OneDimensionalProteinEncoderAffinityModel(params)
 # 6.train model
 if args.train:
     trainer = Train

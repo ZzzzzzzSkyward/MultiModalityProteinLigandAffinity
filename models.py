@@ -1,3 +1,4 @@
+from json import encoder
 from torch.nn.modules.batchnorm import BatchNorm1d
 from header import *
 
@@ -125,12 +126,17 @@ class ProteinAutoEncoder(nn.Module):
         )
         self.linear = nn.Linear(hidden_size * 2, input_size)
 
-    def forward(self, input_seq):
+    def forward_encode(self, input_seq):
         # Embedding
         embedded = self.embedding(input_seq)
 
         # Encoding
         encoder_output, hidden = self.gru_encoder(embedded)
+        return encoder_output, hidden
+
+    def forward(self, input_seq):
+
+        encoder_output, hidden = self.forward_encode(input_seq)
         # Decoding with self-attention and residual connection
         decoder_input = encoder_output[:, -1, :].unsqueeze(1)
         decoder_output, _ = self.gru_decoder(decoder_input)
@@ -153,3 +159,36 @@ class ProteinAutoEncoder(nn.Module):
         decoded = decoded.squeeze(dim=1)
 
         return decoded
+
+
+class OneDimensionalProteinEncoderAffinityModel(nn.Module):
+    def __init__(self, params):
+        protein_input_size, hidden_size, dropout_prob = params.input_size, params.hidden_size, params.dropout
+        compound_input_size = protein_input_size
+        output_size = 1
+        next_size = max(output_size, int(hidden_size / 4))
+        hidden_size = 64
+        super().__init__()
+        self.protein_encoder = ProteinAutoEncoder(params)
+        self.compound_rnn = CompoundRNN(compound_input_size, hidden_size)
+        self.fc = nn.Sequential(
+            nn.Linear(hidden_size * 4, hidden_size),
+            nn.BatchNorm1d(hidden_size),
+            nn.Mish(inplace=True),
+            nn.Dropout(p=dropout_prob),
+            nn.Linear(hidden_size, next_size),
+            nn.BatchNorm1d(next_size),
+            nn.Mish(inplace=True),
+            nn.Dropout(p=dropout_prob),
+            nn.Linear(next_size, output_size),
+        )
+
+    def forward(self, protein_seq, compound_seq):
+        # protein_out=2*hidden_size
+        protein_out, protein_hidden = self.protein_encoder.forward_encode(
+            protein_seq)
+        compound_out = self.compound_rnn(compound_seq)
+        concat_hidden = torch.cat((protein_out, compound_out), dim=1)
+        output = self.fc(concat_hidden)
+        output = output.flatten()
+        return output

@@ -18,6 +18,7 @@ argument_settings = {
     'detailed': True,
     'dropout': 0.1,
     'train_add': True,
+    'pretrained': True,
     'name': 'test' + time.strftime("%m-%d %H:%M:%S", time.localtime())
 }
 args = None
