@@ -1,3 +1,4 @@
+from argparse import Namespace
 from header import *
 import time
 argument_parser = argparse.ArgumentParser()
@@ -21,7 +22,7 @@ argument_settings = {
     'pretrained': True,
     'name': 'test' + time.strftime("%m-%d %H:%M:%S", time.localtime())
 }
-args = None
+args = Namespace()
 
 # argument format: --xxx=yyy --z=w
 

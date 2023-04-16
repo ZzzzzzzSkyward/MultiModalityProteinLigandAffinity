@@ -1,6 +1,6 @@
-from json import encoder
-from torch.nn.modules.batchnorm import BatchNorm1d
 from header import *
+from pytorchutil import load_checkpoint
+from constants import *
 
 
 class ConcatenationModel(nn.Module):
@@ -89,7 +89,7 @@ class OneDimensionalAffinityModel(nn.Module):
         compound_out = self.compound_rnn(compound_seq)
         concat_hidden = torch.cat((protein_out, compound_out), dim=1)
         output = self.fc(concat_hidden)
-        output = output.flatten()
+        output = output.squeeze()
         return output
 
 
@@ -133,6 +133,10 @@ class ProteinAutoEncoder(nn.Module):
         # Encoding
         encoder_output, hidden = self.gru_encoder(embedded)
         return encoder_output, hidden
+
+    def encode(self, input_seq):
+        output, hidden = self.forward_encode(input_seq)
+        return output[:, -1, :].squeeze(dim=1)
 
     def forward(self, input_seq):
 
@@ -185,10 +189,18 @@ class OneDimensionalProteinEncoderAffinityModel(nn.Module):
 
     def forward(self, protein_seq, compound_seq):
         # protein_out=2*hidden_size
-        protein_out, protein_hidden = self.protein_encoder.forward_encode(
+        protein_out = self.protein_encoder.encode(
             protein_seq)
+       # print(protein_out.shape)
         compound_out = self.compound_rnn(compound_seq)
         concat_hidden = torch.cat((protein_out, compound_out), dim=1)
         output = self.fc(concat_hidden)
         output = output.flatten()
         return output
+
+    def pretrained(self, args):
+        if args.resume:
+            return
+        checkpoint_pretrained = args.name.replace("test", "pretrain")
+        checkpoint = load_checkpoint(checkpoint_pretrained, DEVICE)
+        self.protein_encoder.load_state_dict(checkpoint['model_state_dict'])

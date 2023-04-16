@@ -37,44 +37,47 @@ params.hidden_size = 128
 model = OneDimensionalAffinityModel(params)
 if args.pretrained:
     model = OneDimensionalProteinEncoderAffinityModel(params)
-# 6.train model
-if args.train:
-    trainer = Train
-    if args.train_add:
-        trainer = Train_Add
-    # load data
-    data_train = dataset("data_train", "train", DATA_DIR, "test_1")()
-    data_train.choose(["seq", "smiles", "logk"])
-    loader_train = dataloader(data_train, params.bs)
-    data_test = dataset("data_test", "test_both_present", DATA_DIR, "test_1")()
-    data_test.choose(["seq", "smiles", "logk"])
-    loader_test = dataloader(data_test, params.bs, False)
-    trainer(model, loader_train, loader_test, args)
-# 7.verify model
-# set environment
-if args.test:
-    # load data
-    data_train = dataset("data_train", "train", DATA_DIR, "test_1")()
-    data_train.choose(["seq", "smiles", "logk"])
-    loader_train = dataloader(data_train, params.bs, False)
-    data_test = dataset("data_test", "test_both_present", DATA_DIR, "test_1")()
-    data_test_ligand_only = dataset("data_test_ligand_only",
-                                    "test_ligand_only", DATA_DIR, "test_1")()
-    data_test_protein_only = dataset("data_test_protein_only",
-                                     "test_protein_only", DATA_DIR, "test_1")()
-    data_test_both_none = dataset("data_test_both_none", "test_both_none",
-                                  DATA_DIR, "test_1")()
-    data_test.choose(["seq", "smiles", "logk"])
-    data_test_ligand_only.choose(["seq", "smiles", "logk"])
-    data_test_protein_only.choose(["seq", "smiles", "logk"])
-    data_test_both_none.choose(["seq", "smiles", "logk"])
-    loader_test = dataloader(data_test, params.bs, False)
-    loader_test_ligand_only = dataloader(data_test_ligand_only, params.bs,
-                                         False)
-    loader_test_protein_only = dataloader(data_test_protein_only, params.bs,
-                                          False)
-    loader_test_both_none = dataloader(data_test_both_none, params.bs, False)
-    Eval(model, [loader_train,
-                 loader_test, loader_test_ligand_only, loader_test_protein_only,
-                 loader_test_both_none
-                 ], args)
+def main():
+    global args
+    # 6.train model
+    if args.train:
+        trainer = Train
+        if args.train_add:
+            trainer = Train_Add
+        # load data
+        data_train = dataset("data_train", "train", DATA_DIR, "test_1")()
+        data_train.choose(["seq", "smiles", "logk"])
+        loader_train = dataloader(data_train, params.bs)
+        data_test = dataset("data_test", "test_both_present", DATA_DIR, "test_1")()
+        data_test.choose(["seq", "smiles", "logk"])
+        loader_test = dataloader(data_test, params.bs, False)
+        trainer(model, loader_train, loader_test, args)
+    # 7.verify model
+    # set environment
+    if args.test:
+        # load data
+        data_train = dataset("data_train", "train", DATA_DIR, "test_1")()
+        data_train.choose(["seq", "smiles", "logk"])
+        loader_train = dataloader(data_train, params.bs, False)
+        data_test = dataset("data_test", "test_both_present", DATA_DIR, "test_1")()
+        data_test_ligand_only = dataset("data_test_ligand_only",
+                                        "test_ligand_only", DATA_DIR, "test_1")()
+        data_test_protein_only = dataset("data_test_protein_only",
+                                        "test_protein_only", DATA_DIR, "test_1")()
+        data_test_both_none = dataset("data_test_both_none", "test_both_none",
+                                    DATA_DIR, "test_1")()
+        data_test.choose(["seq", "smiles", "logk"])
+        data_test_ligand_only.choose(["seq", "smiles", "logk"])
+        data_test_protein_only.choose(["seq", "smiles", "logk"])
+        data_test_both_none.choose(["seq", "smiles", "logk"])
+        loader_test = dataloader(data_test, params.bs, False)
+        loader_test_ligand_only = dataloader(data_test_ligand_only, params.bs,
+                                            False)
+        loader_test_protein_only = dataloader(data_test_protein_only, params.bs,
+                                            False)
+        loader_test_both_none = dataloader(data_test_both_none, params.bs, False)
+        Eval(model, [#loader_train,
+                    loader_test, loader_test_ligand_only, loader_test_protein_only,
+                    loader_test_both_none
+                    ], args)
+main()

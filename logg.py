@@ -72,6 +72,10 @@ def addloss(loss):
     monitor_loss()
 
 
+def addloss4(p, r, t, h):
+    log(f'pearson=[{p[0]},{p[1]}],rmse={r},tau=[{t[0]},{t[1]}],rho={h}')
+
+
 def predictloss():
     logger.info("predict.loss.k=%.5f".format(calculate_loss_slope(loss_val)))
 

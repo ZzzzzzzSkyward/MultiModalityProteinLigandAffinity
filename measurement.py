@@ -65,14 +65,14 @@ def evaluate_affinity(model, loader):
             # 将数据移动到指定设备
             batch = [item.to(device) for item in batch]
             # 获取输入数据和目标数据
-            inputs, targets = batch[:-1], batch[-1]
+            inputs, label = batch[:-1], batch[-1]
             # 计算模型的预测结果
             outputs = model(*inputs)
             # 将预测结果和目标数据转移到cpu上，并将tensor转换为numpy数组
-            pred, val = _preprocess(outputs, targets, True)
+            y_pred, y_true = _preprocess(outputs, label, True)
             # 将预测结果和目标数据添加到列表中
-            pred_list.append(pred)
-            val_list.append(val)
+            pred_list.append(y_pred)
+            val_list.append(y_true)
     # 将所有验证集和预测结果合并为一个大的数组
     val_list = np.concatenate(val_list, axis=0)
     pred_list = np.concatenate(pred_list, axis=0)
