@@ -31,9 +31,9 @@ os.oldsys = os.system
 
 
 def runsys(command):
-    #print(command)
+    # print(command)
     if command.find('matlab') >= 0:
-        run(command,60)
+        run(command, 60)
     else:
         os.oldsys(f'{command} > ' + os.devnull)
 
@@ -67,10 +67,12 @@ class tryc:
 
 forcestop = False
 skipfailed = False
+Clean = False
+base = 'z:/4/'
 
 
 def gen_pqr(dirname):
-    working_dir = 'z:/refined-set/' + dirname
+    working_dir = base + dirname
     if not os.path.exists(working_dir):
         return
     protein_name = dirname + '_protein'
@@ -79,7 +81,7 @@ def gen_pqr(dirname):
         return
     print(dirname)
     os.system("pdb2pqr --ff=AMBER --keep-chain " + working_dir + '/' +
-              download_protein_name + '.pdb ' + working_dir + '/' + protein_name +
+              protein_name + '.pdb ' + working_dir + '/' + protein_name +
               '.pqr')
 
 
@@ -89,7 +91,7 @@ def fn(dirname):
     global forcestop
     if forcestop:
         return
-    working_dir = 'z:/refined-set/' + dirname
+    working_dir = base + dirname
     if not os.path.exists(working_dir):
         return
     protein_name = dirname + '_protein'
@@ -98,6 +100,7 @@ def fn(dirname):
     # check if 1a8i_protein_feature_complex_alpha_1DCNN is there
     if os.path.exists(working_dir + '/' + protein_name +
                       "_feature_complex_alpha_1DCNN.npy"):
+        print("done")
         return
     # check if pqr file exists
     if not os.path.exists(working_dir + '/' + protein_name + '.pqr'):
@@ -106,14 +109,14 @@ def fn(dirname):
                 working_dir + '/' + protein_name + '.log'):  # and not os.path.exists(working_dir + '/' + 'tmp.out'):
             return
         # generate one using pdb2pqr
-        # gen_pqr(dirname)
-        return
+        gen_pqr(dirname)
     # check if pqr file exists
     if not os.path.exists(working_dir + '/' + protein_name + '.pqr'):
         print('pqr file not found for', dirname)
         return
     # check if .pkl file exists
-    if not os.path.exists(working_dir + '/' + protein_name + '_alpha.pkl'):
+    if not os.path.exists(
+            working_dir + '/' + protein_name + '_alpha.pkl'):
         a = ReadMOL2.SmallMolecule(ligand_name, working_dir)
         PHSmallMolecule.Level1_Rips(a, ligand_name, working_dir)
         PHSmallMolecule.Alpha(a, ligand_name, working_dir)
@@ -122,7 +125,9 @@ def fn(dirname):
         PHComplex.Interaction_Rips(50.0, protein_name, working_dir)
         PHComplex.Electrostatics_Rips(16.0, protein_name, working_dir)
         PHComplex.Alpha(50.0, protein_name, working_dir)
-
+    if not os.path.exists(working_dir + '/' + protein_name + '_alpha.pkl'):
+        print("error: no pkl", dirname)
+        return
     '''
     # TopBP-ML
     LigandFeature.GenerateFeature_alpha(ligand_name, working_dir)
@@ -172,17 +177,17 @@ def fn(dirname):
         ComplexFeature.GenerateFeature_alpha_1DCNN(protein_name, working_dir)
         ComplexFeature.GenerateFeature_alpha_2DCNN(protein_name, working_dir)
     '''
-    Clean = False
     if Clean:
-        os.system('rm ' + working_dir + '/*.PH')
-        os.system('rm ' + working_dir + '/*.csv')
-        os.system('rm ' + working_dir + '/*.pts')
-        os.system('rm ' + working_dir + '/*.bds')
-        os.system('rm ' + working_dir + '/tmp.out')
+        for i in ['PH', 'csv', 'pts', 'bds']:
+            for j in os.listdir(working_dir):
+                if j.endswith('.' + i):
+                    os.remove(working_dir + '/' + j)
+        if os.path.exists(working_dir + '/tmp.out'):
+            os.remove(working_dir + '/tmp.out')
 
 
 def loop():
-    arr = os.listdir('z:/refined-set')
+    arr = os.listdir(base)
     # shuffle
     # np.random.shuffle(arr)
     pbar = tqdm(total=len(arr))
@@ -199,8 +204,8 @@ def tryfn(z):
     return fn(z)
 
 
-def loop_multi():
-    arr = os.listdir('z:/refined-set')
+def loop_parallel():
+    arr = os.listdir(base)
     # shuffle
     np.random.shuffle(arr)
     # get 10 of them
@@ -211,15 +216,10 @@ def loop_multi():
     # define the number of processes to use
     # processes=num_processes
     # create a process pool with the specified number of processes
-    pool = Pool(processes=6)# too many processes can cause out of memory
-    pbar = tqdm(total=len(arr))
-    # map the function fn to each element in the shuffled array        return
-    # fn(z)
-    for result in pool.imap_unordered(tryfn, arr):
-    pool = Pool()
+    pool = Pool(processes=4)  # too many processes can cause out of memory
     pbar = tqdm(total=len(arr))
     # map the function fn to each element in the shuffled array
-    for result in pool.imap_unordered(fn, arr):
+    for result in pool.imap_unordered(tryfn, arr):
         pbar.update(1)
 
     # close the process pool
@@ -227,14 +227,14 @@ def loop_multi():
     pool.join()
 
 
-if __name__ == '__main__':
-    loop_multi()
-    #loop()
-
-
 def run_thread_loop():
     # run loop_multi from thread
-    t = threading.Thread(target=loop_multi)
+    t = threading.Thread(target=loop_parallel)
     t.start()
     # leave it at background
     # set forcestop=True to exit #???useless
+
+
+if __name__ == '__main__':
+    loop_parallel()
+    # loop()

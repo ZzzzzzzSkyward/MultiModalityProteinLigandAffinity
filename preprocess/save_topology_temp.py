@@ -9,7 +9,7 @@ import time
 import shutil
 
 path = "D:/pdb/"
-temppath = "z:/refined-set/"
+temppath = "z:/4/"
 storepath = 'o:/refined-set/'
 file_paths = os.listdir(temppath)
 
@@ -57,7 +57,7 @@ def fn2():
         progress.update(1)
         # zipf.write(temppath + file_path)
         unwanted = [
-            'pdb', 'mol2', 'sdf', 'log', 'csv', 'pts', 'ph', 'bds', 'out'
+            'pdb', 'mol2', 'sdf', 'log', 'csv', 'pts', 'PH', 'bds', 'out'
         ]
         flag = 0
         doneflag = 0
