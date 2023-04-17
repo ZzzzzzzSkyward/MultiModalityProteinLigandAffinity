@@ -8,3 +8,4 @@ finetune_torch
 data_processed
 pretrain_torch
 *.log
+~*

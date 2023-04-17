@@ -4,7 +4,7 @@ from constants import *
 from measurement import *
 from pytorchutil import *
 
-
+DEVICE=get_device()
 def train(model, loader, optimizer, criterion):
     total_loss = 0
     length = len(loader)

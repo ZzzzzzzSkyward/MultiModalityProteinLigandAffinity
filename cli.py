@@ -10,6 +10,7 @@ argument_settings = {
     'train': True,
     'test': True,
     'tofile': True,
+    'file': 'log.txt',
     'batch_size': 32,
     'l0': 0.01,
     'l1': 0.01,

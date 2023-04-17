@@ -5,11 +5,12 @@ from measurement import *
 from pytorchutil import *
 
 
-def Eval(model, loaders, args, load_checkpoint=True):
+def Eval(model, loaders, args, load=True):
     model.eval()
+    DEVICE=get_device()
     # load data
     checkpoint_pth = args.name if hasattr(args, "name") else "test_pth"
-    if load_checkpoint:
+    if load:
         checkpoint = load_checkpoint(checkpoint_pth, DEVICE)
         model.load_state_dict(checkpoint['model_state_dict'])
     for i in loaders:

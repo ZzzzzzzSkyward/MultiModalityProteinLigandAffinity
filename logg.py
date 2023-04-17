@@ -73,7 +73,9 @@ def addloss(loss):
 
 
 def addloss4(p, r, t, h):
-    log(f'pearson=[{p[0]},{p[1]}],rmse={r},tau=[{t[0]},{t[1]}],rho={h}')
+    log(f'pearson={p[0]:.4f},rmse={r:.2f},tau={t[0]:.4f},rho=[{h[0]:.4f}')
+    if p[1] > 0.01 or r[1] > 0.01 or t[1] > 0.01:
+        log(f'pearsonp={p[1]:.4f},taup={r[1]:.4f},rhop=[{h[1]:.4f}])')
 
 
 def predictloss():

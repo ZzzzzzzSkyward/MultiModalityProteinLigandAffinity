@@ -73,3 +73,34 @@ def save_checkpoint(model, optimizer, epoch, min_test_loss, path):
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict()
         }, './weights/' + path + ".pth")
+
+
+device = None
+
+
+def get_device():
+    global device
+    """
+    返回显存占用最少的可用 GPU 的设备号
+    """
+    if device:
+        return device
+    if not torch.cuda.is_available():
+        device = torch.device("cpu")
+        return device
+    device_count = torch.cuda.device_count()
+    if device_count == 0:
+        # 如果没有可用的 GPU，则返回 CPU 设备
+        device = torch.device("cpu")
+    elif device_count == 1:
+        # 如果只有一个 GPU，则返回该 GPU 设备
+        device = torch.device("cuda:0")
+    else:
+        # 获取每个 GPU 的显存使用情况
+        gpu_memory = [torch.cuda.memory_allocated(
+            i) for i in range(device_count)]
+        # 找到显存占用最少的 GPU 的设备号
+        best_device = torch.device("cuda:" +
+                                   str(gpu_memory.index(min(gpu_memory))))
+        device = best_device
+    return device

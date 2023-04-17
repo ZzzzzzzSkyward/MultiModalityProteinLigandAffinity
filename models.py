@@ -1,5 +1,5 @@
 from header import *
-from pytorchutil import load_checkpoint
+from pytorchutil import *
 from constants import *
 
 
@@ -73,13 +73,15 @@ class OneDimensionalAffinityModel(nn.Module):
         self.fc = nn.Sequential(
             #nn.Linear(hidden_size * 2, hidden_size),
             nn.Linear(hidden_size * 4, hidden_size),
-            nn.BatchNorm1d(hidden_size),
-            nn.Mish(inplace=True),
+            #nn.BatchNorm1d(hidden_size),
+            #nn.Mish(inplace=True),
+            nn.PReLU(),
             nn.Dropout(p=dropout_prob),
             nn.Linear(hidden_size, next_size),
             # nn.MaxPool1d(2),
-            nn.BatchNorm1d(next_size),
-            nn.Mish(inplace=True),
+            #nn.BatchNorm1d(next_size),
+            nn.PReLU(),
+            #nn.Mish(inplace=True),
             nn.Dropout(p=dropout_prob),
             nn.Linear(next_size, output_size),
         )
@@ -177,11 +179,11 @@ class OneDimensionalProteinEncoderAffinityModel(nn.Module):
         self.compound_rnn = CompoundRNN(compound_input_size, hidden_size)
         self.fc = nn.Sequential(
             nn.Linear(hidden_size * 4, hidden_size),
-            nn.BatchNorm1d(hidden_size),
+            #nn.BatchNorm1d(hidden_size),
             nn.Mish(inplace=True),
             nn.Dropout(p=dropout_prob),
             nn.Linear(hidden_size, next_size),
-            nn.BatchNorm1d(next_size),
+            #nn.BatchNorm1d(next_size),
             nn.Mish(inplace=True),
             nn.Dropout(p=dropout_prob),
             nn.Linear(next_size, output_size),
@@ -195,10 +197,11 @@ class OneDimensionalProteinEncoderAffinityModel(nn.Module):
         compound_out = self.compound_rnn(compound_seq)
         concat_hidden = torch.cat((protein_out, compound_out), dim=1)
         output = self.fc(concat_hidden)
-        output = output.flatten()
+        output = output.squeeze()
         return output
 
     def pretrained(self, args):
+        DEVICE=get_device()
         if args.resume:
             return
         checkpoint_pretrained = args.name.replace("test", "pretrain")

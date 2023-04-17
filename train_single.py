@@ -8,14 +8,15 @@ from pytorchutil import *
 def train(model, loader, optimizer, criterion):
     total_loss = 0
     length = len(loader)
+    DEVICE=get_device()
     for batch, (input1, input2, labels) in enumerate(loader):
         # print(input1.shape, input2.shape, labels.shape)
         input1, input2, labels = move_to(input1, input2, labels, device=DEVICE)
         outputs = model(input1, input2)
         # print(outputs.shape, labels.shape)
+        optimizer.zero_grad()
         loss = criterion(outputs, labels)
         total_loss += getloss(loss)
-        optimizer.zero_grad()
         loss.backward()
         nn.utils.clip_grad_value_(model.parameters(), 5)
         optimizer.step()
@@ -26,6 +27,7 @@ def train(model, loader, optimizer, criterion):
 def train_add(model, loader, optimizer, criterion, leng):
     total_loss = 0
     length = len(loader)
+    DEVICE=get_device()
     for batch, (input1, input2, labels) in enumerate(loader):
         if leng < batch:
             return total_loss / batch
@@ -44,6 +46,7 @@ def train_add(model, loader, optimizer, criterion, leng):
 
 
 def test(model, loader, criterion):
+    DEVICE=get_device()
     total_loss = 0
     length = len(loader)
     with torch.no_grad():
@@ -59,6 +62,7 @@ def test(model, loader, criterion):
 
 
 def Train(model, loader_train, loader_test, args):
+    DEVICE = get_device()
     # set up device
     log('Training Start.', 'Using device:', DEVICE.type)
 
@@ -71,7 +75,7 @@ def Train(model, loader_train, loader_test, args):
     criterion = model.criterion() if hasattr(
         model, 'criterion') else nn.MSELoss(reduction='mean')
     optimizer = model.optimizer() if hasattr(
-        model, 'optimizer') else optim.Adam(model.parameters(), lr=lr)
+        model, 'optimizer') else optim.AdamW(model.parameters(), lr=lr)
     progress = tqdm(range(num_epochs))
     start_epoch = 0
     min_test_loss = 1e4
@@ -81,6 +85,7 @@ def Train(model, loader_train, loader_test, args):
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch'] + 1
+        progress.update(start_epoch - 1)
         min_test_loss = checkpoint['min_test_loss']
         if hasattr(model, 'resume'):
             model.resume(args)
@@ -117,6 +122,7 @@ def Train(model, loader_train, loader_test, args):
 
 
 def Train_Add(model, loader_train, loader_test, args):
+    DEVICE=get_device()
     # set up device
     log('Training Start.', 'Using device:', DEVICE.type)
 

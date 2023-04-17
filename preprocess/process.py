@@ -208,11 +208,14 @@ def extract_protein_compound_label(splitset,
 
     # 筛选出包含-logKd/Ki值的数据
     pdbs = read_filelist(splitset)
-    data = df.loc[df['-logKd/Ki'].notna() & df['pdbid'].isin(pdbs)].values
-    data = data[:, 3]
-    data = data.astype(np.float32)
-    dump_npy(splitset + "_logk", data)
-    return data
+    logk_data = []
+    # read '-logKd/Ki' from df, search by 'pdb'
+    for pdb in pdbs:
+        logk_value = df.loc[df['pdbid'] == pdb, '-logKd/Ki'].values
+        if len(logk_value) > 0:
+            logk_data.append(float(logk_value[0]))
+    dump_npy(splitset + "_logk", np.array(logk_data,np.float32))
+    return logk_data
 
 
 # 生成SMILES文本
@@ -579,13 +582,14 @@ if __name__ == "__main__":
     ]
     # split_dataset()
     # for i in ["test_both_none"]:
-    for i in []:
+    for i in all:
+    #for i in []:
         # for i in ["train"]:
         # for i in all:
         # for i in ["train", "test_both_none"]:
         # extract_seq_from_file(i)
         # generate_compound_1d(i)
-        # extract_protein_compound_label(i)
-        split_zernike(i)
+        extract_protein_compound_label(i)
+        #split_zernike(i)
     # zip_train_test_files()
     # analyze_data()
