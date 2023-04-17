@@ -68,7 +68,7 @@ class tryc:
 forcestop = False
 skipfailed = False
 Clean = False
-base = 'z:/4/'
+base = 'z:/refined-set/'
 
 
 def gen_pqr(dirname):

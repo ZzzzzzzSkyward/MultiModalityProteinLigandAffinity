@@ -9,7 +9,7 @@ import time
 import shutil
 
 path = "D:/pdb/"
-temppath = "z:/4/"
+temppath = "z:/refined-set/"
 storepath = 'o:/refined-set/'
 file_paths = os.listdir(temppath)
 

@@ -1,0 +1,57 @@
+; MDP options for protein-ligand binding simulation
+
+; Run parameters
+integrator               = md
+dt                       = 0.002
+nsteps                   = 100000
+nstcomm                  = 100
+comm-mode                = Linear
+nstxout                  = 5000
+nstvout                  = 5000
+nstfout                  = 0
+nstlog                   = 5000
+nstenergy                = 5000
+nstcalcenergy            = 500
+nstlist                  = 10
+ns_type                  = grid
+pbc                      = xyz
+rlist                    = 2
+
+; Temperature coupling
+tcoupl                   = v-rescale
+tc-grps                  = system
+tau_t                    = 0.1
+ref_t                    = 300
+
+; Pressure coupling
+pcoupl                   = Parrinello-Rahman
+pcoupltype               = isotropic
+tau_p                    = 1.0
+compressibility          = 4.5e-5
+ref_p                    = 1.0
+
+; Dispersion correction
+DispCorr                 = EnerPres
+
+; Electrostatics
+;coulombtype              = PME
+pme_order                = 4
+fourierspacing           = 0.16
+ewald_rtol               = 1e-5
+epsilon_surface          = 0
+
+; Berendsen thermostat and barostat
+gen_vel                  = no
+gen_temp                 = 300
+gen_seed                 = 0
+
+; Bond constraints
+constraints              = all-bonds
+constraint_algorithm     = lincs
+continuation             = no
+lincs_order              = 4
+lincs_iter               = 1
+lincs_warnangle          = 30
+
+; Output control
+energygrps               = Protein

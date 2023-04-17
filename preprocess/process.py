@@ -106,11 +106,11 @@ def pdb_parse(filename):
                 for residue in chain
                 if aa_dict_number.get(residue.get_resname())
             ]
-            #sequence_str = ''.join(sequence)
+            # sequence_str = ''.join(sequence)
             # seq.append(sequence_str)
             if len(sequence) > 0:
                 seq.append(sequence)
-            #print('Chain {}: {}'.format(chain.id, sequence_str))
+            # print('Chain {}: {}'.format(chain.id, sequence_str))
 
     return seq
 
@@ -214,7 +214,7 @@ def extract_protein_compound_label(splitset,
         logk_value = df.loc[df['pdbid'] == pdb, '-logKd/Ki'].values
         if len(logk_value) > 0:
             logk_data.append(float(logk_value[0]))
-    dump_npy(splitset + "_logk", np.array(logk_data,np.float32))
+    dump_npy(splitset + "_logk", np.array(logk_data, np.float32))
     return logk_data
 
 
@@ -255,7 +255,7 @@ def generate_compound_1d(splitset):
             assert i in smiles_dict, f"'{i}' not in smiles dict"
         one_smiles = [smiles_dict[i] for i in one_smiles]
         smiles_list.append(one_smiles)
-    #dump_set(splitset + "_smiles", smiles_list)
+    # dump_set(splitset + "_smiles", smiles_list)
     dump_npy(splitset + "_smiles", pad_array(smiles_list))
     return smiles_list
 
@@ -340,7 +340,7 @@ read_hash_record()
 
 
 def get_id(dirname, is_protein=False):
-    #filename = f"{dirname}/{dirname}_protein.pdb" if is_protein else f"{dirname}/{dirname}_ligand.mol2"
+    # filename = f"{dirname}/{dirname}_protein.pdb" if is_protein else f"{dirname}/{dirname}_ligand.mol2"
     if dirname in hash_record:
         return hash_record[dirname][0 if is_protein else 1]
     else:
@@ -388,9 +388,9 @@ def split_dataset():
     for i, pair in enumerate(selected):
         progress.update(1)
         if i < num_train:
-            #dest_path = os.path.join(train_path, pair)
-            #src_path = os.path.join(data_path, pair)
-            #shutil.copytree(src_path, dest_path)
+            # dest_path = os.path.join(train_path, pair)
+            # src_path = os.path.join(data_path, pair)
+            # shutil.copytree(src_path, dest_path)
             protein_name = get_id(pair, is_protein=True)
             ligand_name = get_id(pair, is_protein=False)
             if random.random(
@@ -401,12 +401,12 @@ def split_dataset():
             else:
                 tests.add(pair)
         else:
-            #protein_name = get_id(pair, is_protein=True)
-            #ligand_name = get_id(pair, is_protein=False)
+            # protein_name = get_id(pair, is_protein=True)
+            # ligand_name = get_id(pair, is_protein=False)
             # if protein_name not in known_proteins or ligand_name not in known_ligands:
-            #dest_path = os.path.join(test_path, pair)
-            #src_path = os.path.join(data_path, pair)
-            #shutil.copytree(src_path, dest_path)
+            # dest_path = os.path.join(test_path, pair)
+            # src_path = os.path.join(data_path, pair)
+            # shutil.copytree(src_path, dest_path)
             tests.add(pair)
     num_train = len(trains)
     # write_hash_record()
@@ -575,6 +575,33 @@ def analyze_data():
         f"Number of protein-ligand pairs not in train dataset: {len(test_pairs_not_in_train)}")
 
 
+def merge_contact_maps(splitset, output_file):
+    """将多个接触图合并为一个"""
+
+    # 读取PDB ID列表
+    pdbid_list = read_filelist(splitset)
+
+    # 加载第一个接触图
+    first_file = f'contact_map_{pdbid_list[0]}.npy'
+    merged_map = np.load(first_file)
+
+    # 逐个合并接触图
+    for pdbid in pdbid_list[1:]:
+        file_name = f'contact_map_{pdbid}.npy'
+        contact_map = np.load(file_name)
+
+        # 检查接触图大小是否一致
+        if contact_map.shape != merged_map.shape:
+            raise ValueError(
+                f"Contact map {file_name} has different shape from previous maps.")
+
+        # 合并接触图
+        merged_map += contact_map
+
+    # 保存合并后的接触图
+    np.save(output_file, merged_map)
+
+
 if __name__ == "__main__":
     all = [
         "train", "test_protein_only", "test_ligand_only", "test_both_none",
@@ -583,13 +610,13 @@ if __name__ == "__main__":
     # split_dataset()
     # for i in ["test_both_none"]:
     for i in all:
-    #for i in []:
+        # for i in []:
         # for i in ["train"]:
         # for i in all:
         # for i in ["train", "test_both_none"]:
         # extract_seq_from_file(i)
         # generate_compound_1d(i)
         extract_protein_compound_label(i)
-        #split_zernike(i)
+        # split_zernike(i)
     # zip_train_test_files()
     # analyze_data()
