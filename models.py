@@ -71,17 +71,17 @@ class OneDimensionalAffinityModel(nn.Module):
         self.protein_rnn = ProteinRNN(protein_input_size, hidden_size)
         self.compound_rnn = CompoundRNN(compound_input_size, hidden_size)
         self.fc = nn.Sequential(
-            #nn.Linear(hidden_size * 2, hidden_size),
+            # nn.Linear(hidden_size * 2, hidden_size),
             nn.Linear(hidden_size * 4, hidden_size),
-            #nn.BatchNorm1d(hidden_size),
-            #nn.Mish(inplace=True),
+            nn.BatchNorm1d(hidden_size),
+            # nn.Mish(inplace=True),
             nn.PReLU(),
             nn.Dropout(p=dropout_prob),
             nn.Linear(hidden_size, next_size),
             # nn.MaxPool1d(2),
-            #nn.BatchNorm1d(next_size),
+            # nn.BatchNorm1d(next_size),
             nn.PReLU(),
-            #nn.Mish(inplace=True),
+            # nn.Mish(inplace=True),
             nn.Dropout(p=dropout_prob),
             nn.Linear(next_size, output_size),
         )
@@ -101,7 +101,7 @@ class ProteinAutoEncoder(nn.Module):
     def __init__(self, params):
         embedding_size = 512
         hidden_size = 64
-        input_size = 1024
+        input_size = 2048
         num_layers = 2
         num_heads = 8
         dropout = params.dropout
@@ -130,7 +130,7 @@ class ProteinAutoEncoder(nn.Module):
 
     def forward_encode(self, input_seq):
         # Embedding
-        embedded = self.embedding(input_seq)
+        embedded = self.embedding(input_seq.to(torch.int32))
 
         # Encoding
         encoder_output, hidden = self.gru_encoder(embedded)
@@ -179,11 +179,11 @@ class OneDimensionalProteinEncoderAffinityModel(nn.Module):
         self.compound_rnn = CompoundRNN(compound_input_size, hidden_size)
         self.fc = nn.Sequential(
             nn.Linear(hidden_size * 4, hidden_size),
-            #nn.BatchNorm1d(hidden_size),
+            # nn.BatchNorm1d(hidden_size),
             nn.Mish(inplace=True),
             nn.Dropout(p=dropout_prob),
             nn.Linear(hidden_size, next_size),
-            #nn.BatchNorm1d(next_size),
+            # nn.BatchNorm1d(next_size),
             nn.Mish(inplace=True),
             nn.Dropout(p=dropout_prob),
             nn.Linear(next_size, output_size),
@@ -201,7 +201,7 @@ class OneDimensionalProteinEncoderAffinityModel(nn.Module):
         return output
 
     def pretrained(self, args):
-        DEVICE=get_device()
+        DEVICE = get_device()
         if args.resume:
             return
         checkpoint_pretrained = args.name.replace("test", "pretrain")

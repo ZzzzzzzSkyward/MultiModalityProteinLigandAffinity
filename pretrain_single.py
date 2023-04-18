@@ -4,14 +4,16 @@ from constants import *
 from measurement import *
 from pytorchutil import *
 
-DEVICE=get_device()
+DEVICE = get_device()
+
+
 def train(model, loader, optimizer, criterion):
     total_loss = 0
     length = len(loader)
     for batch, input1 in enumerate(loader):
         input1 = move_to(input1[0], device=DEVICE)[0]
         outputs = model(input1)
-        label=input1.float()
+        label = input1.float()
         # print(outputs.shape, labels.shape)
         loss = criterion(outputs, label)
         total_loss += getloss(loss)
@@ -29,8 +31,8 @@ def test(model, loader, criterion):
     with torch.no_grad():
         for batch, input1 in enumerate(loader):
             input1 = move_to(input1[0],
-                                     device=DEVICE)[0]
-            label=input1.float()
+                             device=DEVICE)[0]
+            label = input1.float()
             outputs = model(input1)
             loss = criterion(outputs, label)
             total_loss += getloss(loss)
@@ -39,7 +41,7 @@ def test(model, loader, criterion):
 
 def Train(model, loader_train, loader_test, args):
     # set up device
-    log('Training Start.', 'Using device:', DEVICE.type)
+    log('Training Start.', 'Using device:', DEVICE.type, DEVICE.index)
 
     # move model to device
     model.to(DEVICE)
@@ -69,12 +71,12 @@ def Train(model, loader_train, loader_test, args):
         train_loss = train(model, loader_train, optimizer, criterion)
         addloss(train_loss)
         progress.update(1)
-        if epoch % 10 == 0 or args.detailed:
+        if epoch % 5 == 0 or args.detailed:
             # test model
             model.eval()
             test_loss = test(model, loader_test, criterion)
             epochloss2(epoch, train_loss, test_loss)
-            if min_test_loss > test_loss:
+            if min_test_loss > test_loss or args.track:
                 min_test_loss = test_loss
                 save_checkpoint(
                     model,

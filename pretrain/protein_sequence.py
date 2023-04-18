@@ -32,19 +32,20 @@ if args.tofile:
     tofile()
 # 5.load model
 # currently there is only the concatenation model
-params.input_size = 1024
+params.input_size = 2048
 params.hidden_size = 128
 model = ProteinAutoEncoder(params)
+subdir="test_wo0"
 # 6.train model
 if args.train:
     trainer = Train
     if args.train_add:
         trainer = Train_Add
     # load data
-    data_train = dataset("data_train", "train", DATA_DIR, "test_1")()
+    data_train = dataset("data_train", "train", DATA_DIR, subdir)()
     data_train.choose(["seq"])
     loader_train = dataloader(data_train, params.bs)
-    data_test = dataset("data_test", "test_both_present", DATA_DIR, "test_1")()
+    data_test = dataset("data_test", "test_both_present", DATA_DIR, subdir)()
     data_test.choose(["seq"])
     loader_test = dataloader(data_test, params.bs, False)
     trainer(model, loader_train, loader_test, args)
@@ -52,16 +53,16 @@ if args.train:
 # set environment
 if args.test:
     # load data
-    data_train = dataset("data_train", "train", DATA_DIR, "test_1")()
+    data_train = dataset("data_train", "train", DATA_DIR, subdir)()
     data_train.choose(["seq"])
     loader_train = dataloader(data_train, params.bs, False)
-    data_test = dataset("data_test", "test_both_present", DATA_DIR, "test_1")()
+    data_test = dataset("data_test", "test_both_present", DATA_DIR, subdir)()
     data_test_ligand_only = dataset("data_test_ligand_only",
-                                    "test_ligand_only", DATA_DIR, "test_1")()
+                                    "test_ligand_only", DATA_DIR, subdir)()
     data_test_protein_only = dataset("data_test_protein_only",
-                                     "test_protein_only", DATA_DIR, "test_1")()
+                                     "test_protein_only", DATA_DIR, subdir)()
     data_test_both_none = dataset("data_test_both_none", "test_both_none",
-                                  DATA_DIR, "test_1")()
+                                  DATA_DIR, subdir)()
     data_test.choose(["seq", "smiles", "logk"])
     data_test_ligand_only.choose(["seq", "smiles", "logk"])
     data_test_protein_only.choose(["seq", "smiles", "logk"])

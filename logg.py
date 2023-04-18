@@ -72,10 +72,14 @@ def addloss(loss):
     monitor_loss()
 
 
+valid_threshold = 1e-3
+
+
 def addloss4(p, r, t, h):
-    log(f'pearson={p[0]:.4f},rmse={r:.2f},tau={t[0]:.4f},rho=[{h[0]:.4f}')
-    if p[1] > 0.01 or r[1] > 0.01 or t[1] > 0.01:
-        log(f'pearsonp={p[1]:.4f},taup={r[1]:.4f},rhop=[{h[1]:.4f}])')
+    wp = f'[{int(p[1]/valid_threshold):d}]' if p[1] > valid_threshold else ''
+    wt = f'[{int(t[1]/valid_threshold):d}]' if t[1] > valid_threshold else ''
+    wh = f'[{int(h[1]/valid_threshold):d}]' if h[1] > valid_threshold else ''
+    log(f'pearson={p[0]*100:.2f}{wp},rmse={r:.2f},tau={t[0]*100:.2f}{wt},rho={h[0]*100:.2f}{wh}')
 
 
 def predictloss():

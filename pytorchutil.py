@@ -1,4 +1,5 @@
 from header import *
+from getgpu import *
 
 
 def activate(activation_name="Mish"):
@@ -85,7 +86,11 @@ def get_device():
     """
     if device:
         return device
-    if not torch.cuda.is_available():
+    try:
+        if not torch.cuda.is_available():
+            device = torch.device("cpu")
+            return device
+    except BaseException:
         device = torch.device("cpu")
         return device
     device_count = torch.cuda.device_count()
@@ -96,11 +101,5 @@ def get_device():
         # 如果只有一个 GPU，则返回该 GPU 设备
         device = torch.device("cuda:0")
     else:
-        # 获取每个 GPU 的显存使用情况
-        gpu_memory = [torch.cuda.memory_allocated(
-            i) for i in range(device_count)]
-        # 找到显存占用最少的 GPU 的设备号
-        best_device = torch.device("cuda:" +
-                                   str(gpu_memory.index(min(gpu_memory))))
-        device = best_device
+        device = torch.device(f"cuda:{get_best_gpu()}")
     return device

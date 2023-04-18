@@ -18,15 +18,16 @@ argument_settings = {
     'l3': 10,
     'lr': 1e-4,  # learning rate
     'detailed': True,
-    'explore': True,#don't load loss
-    'dropout': 0.1,
+    'track': True,  # always save loss
+    'explore': True,  # don't load loss
+    'dropout': 0.5,
     'train_add': True,
     'pretrained': True,
     'name': 'test' + time.strftime("%m-%d %H:%M:%S", time.localtime())
 }
 args = Namespace()
 
-# argument format: --xxx=yyy --z=w
+# argument format: -xxx=yyy --z
 
 
 def initialize_parser(settings=argument_settings):
@@ -37,7 +38,7 @@ def initialize_parser(settings=argument_settings):
                                          action='store_true',
                                          help='')
         else:
-            argument_parser.add_argument('--' + i,
+            argument_parser.add_argument('-' + i,
                                          type=type(settings[i]),
                                          default=settings[i])
     return argument_parser.parse_args()

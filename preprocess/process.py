@@ -4,8 +4,6 @@ import zipfile
 import itertools
 import tqdm
 import json
-from rdkit.Chem import AllChem
-import tqdm
 import random
 import shutil
 from rdkit import Chem
@@ -19,6 +17,7 @@ warnings.filterwarnings("ignore")
 # 参数定义
 PDBBindDir = "D:/pdb/"
 data_path = PDBBindDir + "refined-set/"
+toppath = "O:/refined-set/"
 def_path = PDBBindDir + "index/"
 output_path = "z:/"
 pairs_length = len([
@@ -28,7 +27,7 @@ pairs_length = len([
 # 本次任务处理的集合
 num_size = 5319
 percent_train = 0.9
-protein_seq_maxlength = 1024
+protein_seq_maxlength = 2048
 
 # 读取PDB文件
 
@@ -102,7 +101,7 @@ def pdb_parse(filename):
             # sequence_str = ''.join(sequence)
             # seq.append(sequence_str)
             if len(sequence) > 0:
-                sequence.append(0)
+                # sequence.append(0)#whether to add 0?
                 seq.append(sequence)
             # print('Chain {}: {}'.format(chain.id, sequence_str))
 
@@ -114,7 +113,7 @@ def pdb_parse(filename):
 
 def extract_seq(file_list):
     sequences = []
-    progress=tqdm(total=len(file_list))
+    progress = tqdm.tqdm(total=len(file_list))
     for file in file_list:
         # sequences.append("".join(pdb_parse(file)))
         chains = pdb_parse(file)
@@ -155,7 +154,7 @@ def extract_seq_from_file(splitset):
     # with open(output_path + splitset + "_sequence", 'w', encoding='utf-8') as f:
     # f.write("\n".join(seqs))
     # print(seqs)
-    seqs = pad_array(seqs)
+    seqs = pad_array(seqs, np.int8)
     dump_npy(splitset + "_sequence", seqs)
 
 
@@ -253,7 +252,7 @@ def generate_compound_1d(splitset):
         one_smiles = [smiles_dict[i] for i in one_smiles]
         smiles_list.append(one_smiles)
     # dump_set(splitset + "_smiles", smiles_list)
-    dump_npy(splitset + "_smiles", pad_array(smiles_list))
+    dump_npy(splitset + "_smiles", pad_array(smiles_list, np.int8))
     return smiles_list
 
 
@@ -575,25 +574,29 @@ def analyze_data():
         f"Number of protein-ligand pairs not in train dataset: {len(test_pairs_not_in_train)}")
 
 
-def merge_contact_maps(splitset, output_file):
-    """将多个接触图合并为一个"""
-
-    # 读取PDB ID列表
+def merge_matrix(splitset, pattern, name):
     pdbid_list = read_filelist(splitset)
-
-    # 加载第一个接触图
-    first_file = f'contact_map_{pdbid_list[0]}.npy'
-    merged_map = np.load(first_file)
-
-    # 逐个合并接触图
-    for pdbid in pdbid_list[1:]:
-        file_name = f'contact_map_{pdbid}.npy'
-        contact_map = np.load(file_name)
-        # 合并接触图
-        merged_map += contact_map
-
-    # 保存合并后的接触图
-    np.save(output_file, merged_map)
+    output_file = splitset + name
+    mats = []
+    merged_mat = None
+    shape = None
+    for pdbid in pdbid_list:
+        file_name = toppath + pdbid + "/" + pattern.format(pdbid)
+        try:
+            mat = np.load(file_name)
+        except BaseException:
+            continue
+        shape = mat.shape
+        merged_mat = mat
+    for pdbid in pdbid_list:
+        file_name = toppath + pdbid + "/" + pattern.format(pdbid)
+        try:
+            mat = np.load(file_name)
+        except BaseException:
+            mat = np.ones(shape) * -1
+        mats.append(mat)
+    merged_mat = np.stack(mats)
+    dump_npy(output_file, merged_mat)
 
 
 def generate_compound_2d(splitset):
@@ -604,6 +607,13 @@ def generate_compound_2d(splitset):
     dump_npy(splitset + "_matrix_sparse", matrices)
 
 
+def reverse_sequence(splitset):
+    file = output_path + splitset + "_sequence"
+    data = np.load(file)
+    data = np.flip(data, axis=1)
+    dump_npy(splitset + "_sequence", data)
+
+
 if __name__ == "__main__":
     all = [
         "train",
@@ -612,13 +622,23 @@ if __name__ == "__main__":
     ]
     # split_dataset()
     # for i in ["test_both_none"]:
-    for i in all:
+    # for i in all:
     # for i in ["train"]:
-    #for i in []:
-        extract_seq_from_file(i)
+    for i in []:
+        # extract_seq_from_file(i)
+        # reverse_sequence(i)
+        for pattern, name in [
+                ("{}_protein_feature_complex_alpha_1DCNN.npy", "_complex_alpha"),
+                ("{}_protein_feature_complex_electrostatics_1DCNN.npy",
+                 "_complex_electric"),
+                ("{}_protein_feature_complex_interaction_1DCNN.npy", "_complex_interact"),
+                ("{}_ligand_feature_alpha_handcrafted.npy", "_ligand_alpha"),
+                ("{}_ligand_feature_ligand_level1_handcrafted.npy", "_ligand_lv1")
+        ]:
+            merge_matrix(i, pattern, name)
         # generate_compound_1d(i)
         # extract_protein_compound_label(i)
         # generate_compound_2d(i)
         # split_zernike(i)
-    # zip_train_test_files()
+    zip_train_test_files()
     # analyze_data()

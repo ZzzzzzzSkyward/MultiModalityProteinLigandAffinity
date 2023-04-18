@@ -8,7 +8,7 @@ from pytorchutil import *
 def train(model, loader, optimizer, criterion):
     total_loss = 0
     length = len(loader)
-    DEVICE=get_device()
+    DEVICE = get_device()
     for batch, (input1, input2, labels) in enumerate(loader):
         # print(input1.shape, input2.shape, labels.shape)
         input1, input2, labels = move_to(input1, input2, labels, device=DEVICE)
@@ -27,7 +27,7 @@ def train(model, loader, optimizer, criterion):
 def train_add(model, loader, optimizer, criterion, leng):
     total_loss = 0
     length = len(loader)
-    DEVICE=get_device()
+    DEVICE = get_device()
     for batch, (input1, input2, labels) in enumerate(loader):
         if leng < batch:
             return total_loss / batch
@@ -46,7 +46,7 @@ def train_add(model, loader, optimizer, criterion, leng):
 
 
 def test(model, loader, criterion):
-    DEVICE=get_device()
+    DEVICE = get_device()
     total_loss = 0
     length = len(loader)
     with torch.no_grad():
@@ -64,7 +64,7 @@ def test(model, loader, criterion):
 def Train(model, loader_train, loader_test, args):
     DEVICE = get_device()
     # set up device
-    log('Training Start.', 'Using device:', DEVICE.type)
+    log('Training Start.', 'Device:', DEVICE.type)
 
     # move model to device
     model.to(DEVICE)
@@ -101,12 +101,12 @@ def Train(model, loader_train, loader_test, args):
         train_loss = train(model, loader_train, optimizer, criterion)
         addloss(train_loss)
         progress.update(1)
-        if epoch % 10 == 0 or args.detailed:
+        if epoch % 5 == 0 or args.detailed:
             # test model
             model.eval()
             test_loss = test(model, loader_test, criterion)
             epochloss2(epoch, train_loss, test_loss)
-            if min_test_loss > test_loss:
+            if min_test_loss > test_loss or args.track:
                 min_test_loss = test_loss
                 save_checkpoint(
                     model,
@@ -115,7 +115,7 @@ def Train(model, loader_train, loader_test, args):
                     min_test_loss,
                     checkpoint_pth)
 
-    if epoch % 10 == 0:
+    if epoch % 5 == 0 or args.detailed:
         # test model
         model.eval()
         test_loss = test(model, loader_test, criterion)
@@ -123,9 +123,9 @@ def Train(model, loader_train, loader_test, args):
 
 
 def Train_Add(model, loader_train, loader_test, args):
-    DEVICE=get_device()
+    DEVICE = get_device()
     # set up device
-    log('Training Start.', 'Using device:', DEVICE.type)
+    log('Training Start.', 'Device:', DEVICE.type)
 
     # move model to device
     model.to(DEVICE)
