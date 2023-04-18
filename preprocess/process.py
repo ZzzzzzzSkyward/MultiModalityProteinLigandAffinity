@@ -1,25 +1,18 @@
 # 该文件用于处理PDBBind2020数据集
-from re import L
+import scipy.sparse as sp
 import zipfile
-from functools import cache
 import itertools
+import tqdm
 import json
 from rdkit.Chem import AllChem
-from ast import dump
-from site import ENABLE_USER_SITE
 import tqdm
-from imghdr import tests
-import shutil
 import random
+import shutil
 from rdkit import Chem
-from Bio.PDB.Polypeptide import aa1, aa3
 from Bio.PDB import PDBParser
-from Bio import SeqIO
-from Bio.SeqUtils import seq3, seq1
 import numpy as np
 import pandas as pd
 import os
-import sys
 import warnings
 # 去掉rdkit的警告
 warnings.filterwarnings("ignore")
@@ -109,6 +102,7 @@ def pdb_parse(filename):
             # sequence_str = ''.join(sequence)
             # seq.append(sequence_str)
             if len(sequence) > 0:
+                sequence.append(0)
                 seq.append(sequence)
             # print('Chain {}: {}'.format(chain.id, sequence_str))
 
@@ -120,11 +114,14 @@ def pdb_parse(filename):
 
 def extract_seq(file_list):
     sequences = []
+    progress=tqdm(total=len(file_list))
     for file in file_list:
         # sequences.append("".join(pdb_parse(file)))
         chains = pdb_parse(file)
         flat_array = list(itertools.chain(*chains))
         sequences.append(flat_array)
+        progress.update(1)
+    progress.close()
     return sequences
 
 
@@ -260,34 +257,6 @@ def generate_compound_1d(splitset):
     return smiles_list
 
 
-def generate_adjacency_matrices(file_set, file_path, output_file):
-    """
-    从mol2/sdf文件中读取分子并生成对应的邻接矩阵，并将所有邻接矩阵导出到一个大文件中
-
-    :param file_set: 包含分子文件名的集合
-    :param file_path: 包含mol2/sdf文件的文件夹路径
-    :param output_file: 导出的numpy文件路径
-    """
-    # 处理每个文件
-    adjacency_matrices = []
-    for file_name in file_set:
-        # 构建文件路径
-        file_path_full = os.path.join(file_path, file_name)
-
-        # 读取分子
-        mol = Chem.MolFromMolFile(file_path_full)
-
-        # 生成邻接矩阵
-        adj_mat = AllChem.GetAdjacencyMatrix(mol, useBO=True)
-
-        # 添加邻接矩阵到列表中
-        adjacency_matrices.append(adj_mat)
-
-    # 将所有邻接矩阵导出到一个文件中
-    adjacency_matrices_np = np.array(adjacency_matrices)
-    dump_npy(output_file, adjacency_matrices_np)
-
-
 # 注意，通过计算哈希值来确定蛋白质或配体是否相同，只能用于格式统一的数据集
 # 不靠谱，已弃用
 
@@ -360,6 +329,37 @@ def dump_set(file_path, data):
 def dump_npy(file_path, data):
     with open(output_path + file_path, "wb") as f:
         np.save(f, data)
+
+
+def dump_sparse(file_path, data):
+    data = sp.csc_matrix(data)
+    """存储稀疏矩阵到文件"""
+    with open(output_path + file_path, 'wb') as f:
+        # 存储矩阵的shape和非0元素个数
+        shape = data.shape
+        nnz = data.nnz
+        f.write(shape[0].to_bytes(4, 'big'))
+        f.write(shape[1].to_bytes(4, 'big'))
+        f.write(nnz.to_bytes(4, 'big'))
+
+        # 存储数据、行索引和列索引
+        if isinstance(data, sp.csc_matrix) or isinstance(data, sp.csr_matrix):
+            data = data.data
+            indices = data.indices
+            indptr = data.indptr
+
+            data.tofile(f)
+            indices.tofile(f)
+            indptr.tofile(f)
+
+        elif isinstance(data, sp.coo_matrix):
+            row = data.row
+            col = data.col
+            data = data.data
+
+            row.tofile(f)
+            col.tofile(f)
+            data.tofile(f)
 
 
 def split_dataset():
@@ -596,21 +596,29 @@ def merge_contact_maps(splitset, output_file):
     np.save(output_file, merged_map)
 
 
+def generate_compound_2d(splitset):
+    from compound_gcn import batch_generate
+    pdbid_list = read_filelist(splitset)
+    features, matrices = batch_generate(pdbid_list)
+    dump_npy(splitset + "_2dfeature", features)
+    dump_npy(splitset + "_matrix_sparse", matrices)
+
+
 if __name__ == "__main__":
     all = [
-        "train", "test_protein_only", "test_ligand_only", "test_both_none",
+        "train",
+        "test_protein_only", "test_ligand_only", "test_both_none",
         "test_both_present"
     ]
     # split_dataset()
     # for i in ["test_both_none"]:
     for i in all:
-        # for i in []:
-        # for i in ["train"]:
-        # for i in all:
-        # for i in ["train", "test_both_none"]:
-        # extract_seq_from_file(i)
+    # for i in ["train"]:
+    #for i in []:
+        extract_seq_from_file(i)
         # generate_compound_1d(i)
-        extract_protein_compound_label(i)
+        # extract_protein_compound_label(i)
+        # generate_compound_2d(i)
         # split_zernike(i)
     # zip_train_test_files()
     # analyze_data()

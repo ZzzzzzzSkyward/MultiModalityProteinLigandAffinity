@@ -1,11 +1,18 @@
 '''
-又要裁剪
+
 '''
+import deepchem as dc
 import numpy as np
 from rdkit import Chem
 import os
+import warnings
+# 去掉rdkit的警告
+warnings.filterwarnings("ignore")
+
 datadir = "D:/pdb/refined-set/"
 outputdir = "z:/"
+maxlength = 64
+PeriodicTable = Chem.GetPeriodicTable()
 
 
 def read_sdf_file(filename):
@@ -17,89 +24,206 @@ def read_sdf_file(filename):
     return mols
 
 
-PeriodicTable = Chem.GetPeriodicTable()
+def get_adjacent_matrix(mol, diag):
+    adj_matrix = Chem.rdmolops.GetAdjacencyMatrix(mol, useBO=True)
+    for i in range(len(diag)):
+        adj_matrix[i, i] = diag[i]
+    return np.array(adj_matrix)
 
-maxlength = 512
+
+def get_charge_matrix(mol, max_atoms):
+    charge_matrix_cal = dc.feat.CoulombMatrix(maxlength)
+    charge_matrix = charge_matrix_cal(mol)[0]
+    return pad_or_truncate_2d(charge_matrix, max_atoms)
 
 
-def preprocess_molecule(mol, max_atoms):
+def get_distance_matrix(mol):
+    dist_matrix = Chem.rdmolops.GetDistanceMatrix(mol)
+    return np.array(dist_matrix)
+
+
+max_seq_len = 0
+
+
+def pad_or_truncate_3d(matrix, max_len, dtype=np.float32):
     """
-    对单个分子进行预处理操作，包括节点特征和邻接矩阵的计算等
+    对矩阵进行填充或裁剪以满足定长要求
+    Args:
+        matrix: 输入矩阵,大小为[batch, dimension, seq_len, seq_len]
+        max_len: 目标序列长度
+    Returns:
+        定长的矩阵,大小为[batch, dimension, max_len, max_len]
     """
-    # 计算节点特征：元素类型、电荷、质量等
-    nodes_feat = []
-    for atom in mol.GetAtoms():
-        feat = [
-            # 原子序数
-            float(atom.GetAtomicNum()),
-            # 电荷
-            float(atom.GetFormalCharge()),
-            # 质量
-            float(PeriodicTable.GetAtomicWeight(atom.GetAtomicNum()))
-        ]
-        nodes_feat.append(feat)
-    # nodes_feat.sort(key=lambda x: x[0])
-    # 构建邻接矩阵
-    adj_matrix = Chem.rdmolops.GetAdjacencyMatrix(mol)
+    batch = len(matrix)
+    dim = len(matrix[0])
+    shape = [batch, dim, *matrix[0][0].shape]
+    for i in range(2, len(shape)):
+        shape[i] = max_len
+    ret = np.zeros(shape, dtype=dtype)
+    global max_seq_len
+    for i, mat in enumerate(matrix):
+        mat = np.array(mat)
+        _, *size = mat.shape
+        seq_len = size[0]
+        # 如果序列长度大于max_len,则裁剪
+        max_seq_len = max(max_seq_len, seq_len)
+        if seq_len != max_len:
+            l = min(max_len, seq_len)
+            #print(ret.shape, mat.shape, i, l)
+            ret[i, :, :l, :l] = mat[:, :l, :l]  # assume 2d graph
+        # 如果序列长度正好等于max_len,则直接返回
+        else:
+            ret[i] = mat
 
-    # 填充邻接矩阵为固定维度
-    n_atoms = len(nodes_feat)
-    global maxlength
-    maxlength = max(maxlength, n_atoms)
-    if n_atoms < max_atoms:
-        pad_size = max_atoms - n_atoms
-        nodes_feat += [[0] * len(nodes_feat[0])] * pad_size
-        adj_matrix = np.pad(
-            adj_matrix, ((0, pad_size), (0, pad_size)), 'constant')
+    return ret
+
+
+def pad_or_truncate_2d(matrix, max_len, dtype=np.float32):
+    """
+    对矩阵进行填充或裁剪以满足定长要求
+    Args:
+        matrix: 输入矩阵,大小为[seq_len, seq_len]
+        max_len: 目标序列长度
+    Returns:
+        定长的矩阵,大小为[max_len, max_len]
+    """
+    shape = [max_len, max_len]
+    ret = np.zeros(shape, dtype=dtype)
+    global max_seq_len
+    mat = np.array(matrix)
+    _, *size = mat.shape
+    seq_len = size[0]
+    # 如果序列长度大于max_len,则裁剪
+    max_seq_len = max(max_seq_len, seq_len)
+    if seq_len != max_len:
+        l = min(max_len, seq_len)
+        #print(ret.shape, mat.shape, i, l)
+        ret[:l, :l] = mat[:l, :l]  # assume 2d graph
+    # 如果序列长度正好等于max_len,则直接返回
     else:
-        nodes_feat = nodes_feat[:max_atoms]
-        adj_matrix = adj_matrix[:max_atoms, :max_atoms]
-    adj_matrix = np.array(adj_matrix)
-    nodes_feat = np.array(nodes_feat)
-    np.fill_diagonal(adj_matrix, 1)
-    # 将邻接矩阵转化为度矩阵D和标准化的邻接矩阵A_hat
-    D = np.diag(np.sum(adj_matrix, axis=1))
-    A_hat = np.linalg.inv(D) @ adj_matrix
+        ret = mat
 
-    return nodes_feat, A_hat
+    return ret
 
 
-def generate_gcn_input(sdf_file, max_atoms=maxlength):
+def pad_or_truncate_1d(matrix, max_len, dtype=np.float32):
+    """
+    对向量进行填充或裁剪以满足定长要求
+    Args:
+        matrix: 输入矩阵,大小为[batch, seq_len]
+        max_len: 目标序列长度
+    Returns:
+        定长的矩阵,大小为[batch, max_len]
+    """
+    batch = len(matrix)
+    shape = [batch, *matrix[0].shape]
+    shape[1] = max_len
+    ret = np.zeros(shape, dtype=dtype)
+    global max_seq_len
+    for i, mat in enumerate(matrix):
+        seq_len = len(mat)
+        # 如果序列长度大于max_len,则裁剪
+        max_seq_len = max(max_seq_len, seq_len)
+        if seq_len != max_len:
+            l = min(max_len, len(mat[0]))
+            # print(i,max_len,ret.shape,mat.shape,l)
+            ret[i, :l] = mat[:l]
+        # 如果序列长度正好等于max_len,则直接返回
+        else:
+            ret[i] = mat
+
+    return ret
+
+
+def normalize(matrix):
+    D = np.diag(np.sum(matrix, axis=1))
+    try:
+        D_half_inv = np.diag(D[D != 0]**(-1 / 2), 0)   # 计算D的对角线元素的平方根的倒数
+        A_hat = D_half_inv @ matrix @ D_half_inv
+    except BaseException:
+        D_half_inv = np.diag(D[D != 0]**(-1 / 2), 0)   # 忽略D中不可逆的元素
+        A_hat = D_half_inv @ matrix @ D_half_inv
+
+    return A_hat
+
+
+def get_matrices(mol):
+    num_features = 3
+    atomnum = 0
+    # features: atom number,charge
+    bonds = []
+    features = np.zeros((mol.GetNumAtoms(), num_features), np.int32)
+    for i, atom in enumerate(mol.GetAtoms()):
+        # use rdkit to get the atom's weight
+        features[i, 0] = atomnum = atom.GetAtomicNum()
+        # get charge
+        features[i, 1] = PeriodicTable.GetDefaultValence(
+            atomnum) - atom.GetFormalCharge()
+        # get bond number, diag include H
+        bonds.append(atom.GetTotalNumHs())
+        # get hybridization
+        features[i, 2] = atom.GetHybridization()
+    # get the bonding matrix
+    adj_matrix = get_adjacent_matrix(mol, bonds)
+    # get charge matrix
+    # this one counts H, so it is not aligned
+    #charge_matrix = get_charge_matrix(mol, atomnum)
+    # get distance matrix
+    distance_matrix = get_distance_matrix(mol)
+    #adj_matrix = normalize(adj_matrix)
+    return features, distance_matrix, adj_matrix, charge_matrix  # , charge_matrix
+
+
+def generate_gcn_input(sdf_file):
     """
     从SDF文件中读取分子数据，并将其预处理为GCN所需的输入格式
     """
     mols = read_sdf_file(sdf_file)
     mol = mols[0] if len(mols) > 0 else None
     if mol is not None:
-        nodes_feat, adj_matrix = preprocess_molecule(
-            mol, max_atoms)
-        # 将节点特征和邻接矩阵打包成元组，作为GCN的输入
-        return nodes_feat, adj_matrix
-    return None, None
+        return get_matrices(
+            mol)
+    return None, None, None, None
 
 
 if __name__ == '__main__':
     # 示例代码
     testsdf = "D:/pdb/refined-set/1a1e/1a1e_ligand.sdf"
-    nodes_feats, adj_matrices = generate_gcn_input(testsdf)
-    print(nodes_feats.shape)  # (n_samples, max_atoms, n_features)
-    print(adj_matrices.shape)
-    print(nodes_feats)
-    # print(adj_matrices)
+    feature, *matrix = generate_gcn_input(testsdf)
+    if feature is None:
+        pass
+    else:
+        print(feature)
+        print(*matrix)
+        outputpath = "z:/"
+        np.savetxt(outputpath + "feature.txt", feature)
+        for i in range(len(matrix)):
+            np.savetxt(
+                outputpath +
+                "mat" +
+                str(i) +
+                ".txt",
+                matrix[i],
+                fmt="%02d")
 
 
-def batch_generate():
-    for i in os.listdir(datadir):
+def batch_generate(splitset):
+    features = []
+    matrices = []
+    for i in splitset:
+        if not os.path.isdir(datadir + i):
+            continue
         for j in os.listdir(datadir + i):
             if j.endswith(".sdf"):
-                nodes_feats, adj_matrices = generate_gcn_input(
+                feature, *matrice = generate_gcn_input(
                     datadir + i + "/" + j)
-                if nodes_feats is not None:
-                    np.save(outputdir + "/" +
-                            i + "_nodes.npy", nodes_feats)
-                    np.save(outputdir + '/' + i + "_adj.npy", adj_matrices)
+                if feature is not None:
+                    features.append(feature)
+                    matrices.append(matrice)
                 else:
                     print(j)
-
-
-batch_generate()
+    features = pad_or_truncate_1d(features, maxlength, np.int32)
+    matrices = pad_or_truncate_3d(matrices, maxlength, np.int32)
+    print(features.shape, matrices.shape)
+    print("max length: ", max_seq_len)
+    return features, matrices

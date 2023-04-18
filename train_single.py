@@ -86,7 +86,8 @@ def Train(model, loader_train, loader_test, args):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch'] + 1
         progress.update(start_epoch - 1)
-        min_test_loss = checkpoint['min_test_loss']
+        if not args.explore:
+            min_test_loss = checkpoint['min_test_loss']
         if hasattr(model, 'resume'):
             model.resume(args)
     if args.pretrained:
@@ -145,7 +146,8 @@ def Train_Add(model, loader_train, loader_test, args):
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         start_epoch = checkpoint['epoch'] + 1
-        min_test_loss = checkpoint['min_test_loss']
+        if not args.explore:
+            min_test_loss = checkpoint['min_test_loss']
     epoch = 0
     train_loss = 0
     for epoch in range(start_epoch, num_epochs):

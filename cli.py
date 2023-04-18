@@ -18,6 +18,7 @@ argument_settings = {
     'l3': 10,
     'lr': 1e-4,  # learning rate
     'detailed': True,
+    'explore': True,#don't load loss
     'dropout': 0.1,
     'train_add': True,
     'pretrained': True,

@@ -17,6 +17,29 @@ all_dataset_files = {
 }
 
 
+
+
+def load_matrix(filename):
+    """如果文件名包含sparse,加载为稠密矩阵,否则使用np.load正常加载
+    注意稀疏矩阵格式int32
+    """
+    if 'sparse' in filename:
+        with open(filename, 'rb') as f:
+            shape = (np.fromfile(f, dtype='int32', count=1)[0],
+                     np.fromfile(f, dtype='int32', count=1)[1])
+
+            nnz = np.fromfile(f, dtype='int32', count=1)[0]
+            data = np.fromfile(f, dtype='int32', count=nnz)
+            mat = np.reshape(data, shape)
+    else:
+        mat = np.load(filename)
+    return mat
+
+
+def _load(filename):
+    return load_matrix(filename)
+
+
 def _load_multi(dir, cate, selected):
     data_dict = {}
     for file in all_dataset_files:
@@ -26,7 +49,7 @@ def _load_multi(dir, cate, selected):
         file = all_dataset_files[file].format(cate=cate)
         filepath = zzz._todir(dir) + file
         if os.path.exists(filepath):
-            data = np.load(filepath)
+            data = _load(filepath)
             data_dict[tag] = data
         else:
             warn("Could not load " + filepath)

@@ -120,7 +120,13 @@ public class DescriptorTest2 {
 			// file
 			Structure structure;
 			try {
+                if(pdbentry.matchess("sdf")){
+                SDFReader reader = new SDFReader(pdbentry);
+                structure=reader.readNextStructure();
+                }
+                else{
 				structure = StructureIO.getStructure(pdbentry);
+				}
 			} catch (Exception e) {
 				writer3.println(pdbentry);
 				File file2 = new File(workingdir + pdbentry + ".moment");
