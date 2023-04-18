@@ -1,8 +1,11 @@
 '''
-又要裁剪，不合理，弃用
+又要裁剪
 '''
 import numpy as np
 from rdkit import Chem
+import os
+datadir = "D:/pdb/refined-set/"
+outputdir = "z:/"
 
 
 def read_sdf_file(filename):
@@ -19,7 +22,7 @@ PeriodicTable = Chem.GetPeriodicTable()
 maxlength = 512
 
 
-def preprocess_molecule(mol, max_atoms=maxlength):
+def preprocess_molecule(mol, max_atoms):
     """
     对单个分子进行预处理操作，包括节点特征和邻接矩阵的计算等
     """
@@ -35,7 +38,7 @@ def preprocess_molecule(mol, max_atoms=maxlength):
             float(PeriodicTable.GetAtomicWeight(atom.GetAtomicNum()))
         ]
         nodes_feat.append(feat)
-    #nodes_feat.sort(key=lambda x: x[0])
+    # nodes_feat.sort(key=lambda x: x[0])
     # 构建邻接矩阵
     adj_matrix = Chem.rdmolops.GetAdjacencyMatrix(mol)
 
@@ -51,15 +54,17 @@ def preprocess_molecule(mol, max_atoms=maxlength):
     else:
         nodes_feat = nodes_feat[:max_atoms]
         adj_matrix = adj_matrix[:max_atoms, :max_atoms]
-
+    adj_matrix = np.array(adj_matrix)
+    nodes_feat = np.array(nodes_feat)
+    np.fill_diagonal(adj_matrix, 1)
     # 将邻接矩阵转化为度矩阵D和标准化的邻接矩阵A_hat
     D = np.diag(np.sum(adj_matrix, axis=1))
     A_hat = np.linalg.inv(D) @ adj_matrix
 
-    return np.array(nodes_feat), np.array(A_hat)
+    return nodes_feat, A_hat
 
 
-def generate_gcn_input(sdf_file, max_atoms=30):
+def generate_gcn_input(sdf_file, max_atoms=maxlength):
     """
     从SDF文件中读取分子数据，并将其预处理为GCN所需的输入格式
     """
@@ -67,9 +72,9 @@ def generate_gcn_input(sdf_file, max_atoms=30):
     mol = mols[0] if len(mols) > 0 else None
     if mol is not None:
         nodes_feat, adj_matrix = preprocess_molecule(
-            mol, max_atoms=max_atoms)
+            mol, max_atoms)
         # 将节点特征和邻接矩阵打包成元组，作为GCN的输入
-        return np.array(nodes_feat), np.array(adj_matrix)
+        return nodes_feat, adj_matrix
     return None, None
 
 
@@ -81,3 +86,20 @@ if __name__ == '__main__':
     print(adj_matrices.shape)
     print(nodes_feats)
     # print(adj_matrices)
+
+
+def batch_generate():
+    for i in os.listdir(datadir):
+        for j in os.listdir(datadir + i):
+            if j.endswith(".sdf"):
+                nodes_feats, adj_matrices = generate_gcn_input(
+                    datadir + i + "/" + j)
+                if nodes_feats is not None:
+                    np.save(outputdir + "/" +
+                            i + "_nodes.npy", nodes_feats)
+                    np.save(outputdir + '/' + i + "_adj.npy", adj_matrices)
+                else:
+                    print(j)
+
+
+batch_generate()

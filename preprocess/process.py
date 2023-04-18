@@ -589,12 +589,6 @@ def merge_contact_maps(splitset, output_file):
     for pdbid in pdbid_list[1:]:
         file_name = f'contact_map_{pdbid}.npy'
         contact_map = np.load(file_name)
-
-        # 检查接触图大小是否一致
-        if contact_map.shape != merged_map.shape:
-            raise ValueError(
-                f"Contact map {file_name} has different shape from previous maps.")
-
         # 合并接触图
         merged_map += contact_map
 

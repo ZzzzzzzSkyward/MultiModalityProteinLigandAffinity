@@ -55,6 +55,8 @@ def fn2():
     count = 0
     for file_path in file_paths:
         progress.update(1)
+        if not os.path.isdir(temppath+file_path):
+            continue
         # zipf.write(temppath + file_path)
         unwanted = [
             'pdb', 'mol2', 'sdf', 'log', 'csv', 'pts', 'PH', 'bds', 'out'
@@ -69,7 +71,7 @@ def fn2():
                 break
         if doneflag:
             for file in os.listdir(temppath + file_path):
-                if any(file.endswith(ext) for ext in unwanted):
+                if any(file.endswith(ext) for ext in unwanted) or os.path.isdir(file):
                     continue
                 fpath = temppath + file_path + '/' + file
                 if os.path.exists(fpath):
