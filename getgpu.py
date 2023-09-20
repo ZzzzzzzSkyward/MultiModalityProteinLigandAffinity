@@ -1,4 +1,5 @@
 import os
+BLOCKCUDA = 0
 
 
 def get_gpu_memory():
@@ -35,8 +36,10 @@ def get_best_gpu():
     gpu_memory = get_gpu_memory()
     sorted_gpu = sorted(gpu_memory, key=lambda x: (
         x['memory_free'], x['id']), reverse=True)
-    return sorted_gpu[0]['id']
-
+    for i in sorted_gpu:
+        if i['id']>=BLOCKCUDA:
+            return i['id']-BLOCKCUDA
 
 if __name__ == '__main__':
     print(get_gpu_memory())
+    print(get_best_gpu())

@@ -1,4 +1,6 @@
-# A Multi-Modal Framework for Protein-Ligand Affinity and Contact Prediction
+# A Multi-Modal Framework for Protein-Ligand Affinity Prediction
+
+[中文版](README_zh.md)
 
 ## Motivation
 
@@ -23,7 +25,7 @@ For experiment, the dataset are split into train set, validate set(both present)
 | Unique Protein   | 176    | 570     | 564    | 344            | 453           |
 | Unique ligand    | 291    |         |        |                |               |
 | Both unique      | 170    |         |        |                |               |
-| sum              | 5317   | 3863    | 4144   |                |               |
+| sum              | 5316   | 3863    | 4144   |                |               |
 
 [Todo]
 

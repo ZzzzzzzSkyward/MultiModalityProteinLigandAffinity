@@ -12,6 +12,7 @@ warnings.filterwarnings("ignore")
 datadir = "D:/pdb/refined-set/"
 outputdir = "z:/"
 maxlength = 64
+
 PeriodicTable = Chem.GetPeriodicTable()
 
 
@@ -171,7 +172,7 @@ def get_matrices(mol):
     # get distance matrix
     distance_matrix = get_distance_matrix(mol)
     #adj_matrix = normalize(adj_matrix)
-    return features, distance_matrix, adj_matrix, charge_matrix  # , charge_matrix
+    return features, distance_matrix, adj_matrix#, charge_matrix  # , charge_matrix
 
 
 def generate_gcn_input(sdf_file):
@@ -222,6 +223,8 @@ def batch_generate(splitset):
                     matrices.append(matrice)
                 else:
                     print(j)
+                    features.append(np.zeros((3,3)))
+                    matrices.append(np.zeros((2,1,1)))
     features = pad_or_truncate_1d(features, maxlength, np.int32)
     matrices = pad_or_truncate_3d(matrices, maxlength, np.int32)
     print(features.shape, matrices.shape)

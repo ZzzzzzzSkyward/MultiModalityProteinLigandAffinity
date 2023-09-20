@@ -27,6 +27,9 @@ formatter = logging.Formatter(
     '%(asctime)s[%(levelname)s]%(message)s',
     datefmt=_logdate)
 
+color_formatter = '%(asctime)s%(log_color)s[%(levelname)s]%(blue)s%(message)s'
+color_formatter = colorlog.ColoredFormatter(color_formatter, datefmt=_logdate)
+
 screen_length = 10
 loss_val = []
 average_loss_val = []
@@ -45,8 +48,7 @@ def tofile(path="log.txt"):
 def toscreen():
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
-    # add formatter to ch
-    ch.setFormatter(formatter)
+    ch.setFormatter(color_formatter)
     logger.addHandler(ch)
 
 

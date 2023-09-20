@@ -10,3 +10,4 @@ pretrain_torch
 *.log
 ~*
 tempCodeRunner*
+biozernike/example/target

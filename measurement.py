@@ -44,28 +44,34 @@ def rho(y_pred, y_true):
 
 
 def five_of_them(y_pred, y_true):
-    #y_pred, y_true = _preprocess(y_pred, y_true)
+    # y_pred, y_true = _preprocess(y_pred, y_true)
     y_rmse = rmse(y_pred, y_true)
     # 以下计算需要搬回CPU上做，因为numpy不支持GPU
-    #默认已经搬回来了
-    #y_pred, y_true = _tocpu(y_pred, y_true)
+    # 默认已经搬回来了
+    # y_pred, y_true = _tocpu(y_pred, y_true)
     y_pearson = pearson(y_pred, y_true)
     y_tau = tau(y_pred, y_true)
     y_rho = rho(y_pred, y_true)
-    #cc=contact_au(y_pred, y_true)
-    return y_pearson, y_rmse, y_tau, y_rho#,cc
+    # cc=contact_au(y_pred, y_true)
+    return y_pearson, y_rmse, y_tau, y_rho  # ,cc
 
 
 def evaluate_affinity(model, loader):
+    args = evaluate_affinity_val(model, loader)
+    return evaluate_affinity_calc(*args)
+
+
+def evaluate_affinity_val(model, loader, cb=None):
     device = next(model.parameters()).device
     val_list = []
     pred_list = []
+    label_len=1
     with torch.no_grad():
         for batch in loader:
             # 将数据移动到指定设备
             batch = [item.to(device) for item in batch]
             # 获取输入数据和目标数据
-            inputs, label = batch[:-1], batch[-1]
+            inputs, label = batch[:-label_len], batch[-label_len]
             # 计算模型的预测结果
             outputs = model(*inputs)
             # 将预测结果和目标数据转移到cpu上，并将tensor转换为numpy数组
@@ -76,8 +82,14 @@ def evaluate_affinity(model, loader):
     # 将所有验证集和预测结果合并为一个大的数组
     val_list = np.concatenate(val_list, axis=0)
     pred_list = np.concatenate(pred_list, axis=0)
-    return five_of_them(pred_list, val_list)
+    return pred_list, val_list, cb
 
+
+def evaluate_affinity_calc(pred_list, val_list, cb=None):
+    if not cb:
+        return five_of_them(pred_list, val_list)
+    else:
+        return cb(five_of_them(pred_list, val_list))
 
 # TODO改写接触的AUPRC统计
 
@@ -186,7 +198,7 @@ def contact_au(y_pred, y_true, protein_length, compound_length, ind):
     # 并行计算AP和AUC
     AAAA = pool.map(
         calculate_AP_AUC,
-        [(y_pred, y_true, protein_length,compound_length)
+        [(y_pred, y_true, protein_length, compound_length)
          for i in range(length) if ind[i] != 0],
         chunksize=1)
 

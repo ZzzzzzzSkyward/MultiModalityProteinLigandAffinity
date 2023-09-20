@@ -15,7 +15,11 @@ class param:
     input_size = 0
     output_size = 0
     hidden_size = 0
+    compound_size = 0
+    protein_size = 0
     dropout = 0
+    zernike_size = 176
+    alpha_size = 1722
 
     def load_from_cli(self, _args={}):
         self.l0 = _args.l0
@@ -26,11 +30,10 @@ class param:
         self.bs = _args.batch_size
         self.ep = _args.epoch
         self.dropout = _args.dropout
-        #self.sd = _args.seed
-        #self.input_size = _args.input_size
-        #self.output_size = _args.output_size
-        #self.hidden_size = _args.hidden_size
-
+        # self.sd = _args.seed
+        # self.input_size = _args.input_size
+        # self.output_size = _args.output_size
+        # self.hidden_size = _args.hidden_size
 
     def seed(self):
         torch.manual_seed(self.sd)

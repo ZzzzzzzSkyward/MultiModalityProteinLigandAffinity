@@ -46,12 +46,18 @@ final class utils {
 	}
 
 	public static String[] read(String filePath) throws IOException {
+		return read(filePath, false);
+	}
+
+	public static String[] read(String filePath, Boolean dontUpper) throws IOException {
 		List<String> pdbList = new ArrayList<String>();
 
 		BufferedReader reader = new BufferedReader(new FileReader(filePath));
 		String line;
 		while ((line = reader.readLine()) != null) {
-			String pdbId = line.trim().toUpperCase();
+			String pdbId = line.trim();
+			if (!dontUpper)
+				pdbId = pdbId.toUpperCase();
 			if (pdbId.length() >= 4) {
 				pdbList.add(pdbId);
 			}
@@ -120,13 +126,7 @@ public class DescriptorTest2 {
 			// file
 			Structure structure;
 			try {
-                if(pdbentry.matchess("sdf")){
-                SDFReader reader = new SDFReader(pdbentry);
-                structure=reader.readNextStructure();
-                }
-                else{
 				structure = StructureIO.getStructure(pdbentry);
-				}
 			} catch (Exception e) {
 				writer3.println(pdbentry);
 				File file2 = new File(workingdir + pdbentry + ".moment");
@@ -179,6 +179,95 @@ public class DescriptorTest2 {
 	}
 
 	@Test
+	public void convertMol2() throws Exception {
+		String[] pdbList = utils.read("src/test/ligand.txt");
+		boolean override = false;
+		String workingdir = "z:/pdb/";
+		Collections.shuffle(Arrays.asList(pdbList));
+		// open a file to record the pdbids that cannot be fetched
+		PrintWriter writer3 = new PrintWriter(new FileWriter(workingdir + "error.txt", true));
+		for (int j = 0; j < pdbList.length; j++) {
+			String pdbentry = pdbList[j];
+			// do not overwrite existing files
+			if (!override && utils.exist(workingdir + pdbentry + ".moment")
+					&& utils.exist(workingdir + pdbentry + ".geo")) {
+				continue;
+			}
+			// check if the existing file *.moment is old enough
+			File file = new File(workingdir + pdbentry + ".moment");
+			if (file.exists()) {
+				long lastModified = file.lastModified();
+				long currentTime = System.currentTimeMillis();
+				// if the file is within 1 hour, continue
+				if (currentTime - lastModified < 3600000) {
+					continue;
+				}
+			}
+			// first write an empty file
+			PrintWriter writer0 = new PrintWriter(workingdir + pdbentry + ".moment",
+					"UTF-8");
+			// write a string
+			writer0.println("empty");
+			writer0.close();
+			//read the ligand mol2 file and extract atom coordinates
+			String mol2file = "z:/pdb/mol2/" + pdbentry + ".mol2";
+			FileReader fr = new FileReader(mol2file);
+			BufferedReader br = new BufferedReader(fr);
+			String line;
+			List<Point3d> points = new ArrayList<Point3d>();
+			while ((line = br.readLine()) != null) {
+				if (line.startsWith("@<TRIPOS>ATOM")) {
+					while ((line = br.readLine()) != null) {
+						String[] tokens = line.split("\\s+");
+						double x = Double.parseDouble(tokens[2]);
+						double y = Double.parseDouble(tokens[3]);
+						double z = Double.parseDouble(tokens[4]);
+						Point3d point = new Point3d(x, y, z);
+						points.add(point);
+					}
+				}
+			}
+			br.close();
+			fr.close();
+
+			Atom[] reprAtoms = StructureTools.getRepresentativeAtomArray(bioUnitStructure);
+			Point3d[] reprPoints = Calc.atomsToPoints(reprAtoms);
+			String[] resNames = new String[reprAtoms.length];
+			for (int i = 0; i < reprAtoms.length; i++) {
+				final Atom a = reprAtoms[i];
+				resNames[i] = new Function<Atom, String>() {
+					@Override
+					public String apply(Atom a) {
+						return a.getGroup().getPDBName();
+					}
+				}.apply(a);
+			}
+			EnumSet<DescriptorMode> mode = EnumSet.allOf(DescriptorMode.class);
+			DescriptorConfig config = new DescriptorConfig(
+					DescriptorTest2.class.getResourceAsStream("/descriptor.properties"), mode);
+
+			Descriptor ssd = new Descriptor(reprPoints, resNames, config);
+			double[] MomentDescriptors = ssd.getMomentDescriptor();
+			double[] GeometryDescriptors = ssd.getGeometryDescriptor();
+			// save both to a file
+			PrintWriter writer = new PrintWriter(workingdir + pdbentry + ".moment",
+					"UTF-8");
+			for (int i = 0; i < GeometryDescriptors.length; i++) {
+				writer.println(GeometryDescriptors[i]);
+			}
+			writer.close();
+
+			PrintWriter writer2 = new PrintWriter(workingdir + pdbentry + ".geo",
+					"UTF-8");
+			for (int i = 0; i < MomentDescriptors.length; i++) {
+				writer2.println(MomentDescriptors[i]);
+			}
+			writer2.close();
+		}
+		writer3.close();
+	}
+
+	// @Test
 	public void convertObsolotePDB() throws Exception {
 		String[] obsolote = utils.read("src/test/obsolote.txt");
 		boolean override = false;
@@ -218,7 +307,7 @@ public class DescriptorTest2 {
 				structure = StructureIO.getStructure(_new);
 			} catch (Exception e) {
 				// print to screen
-				System.out.println("ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!"+old);
+				System.out.println("ERROR!!!!!!!!!!!!!!!!!!!!!!!!!!!!" + old);
 				System.out.println(e.getMessage());
 				File file2 = new File(workingdir + old + ".moment");
 				file2.delete();

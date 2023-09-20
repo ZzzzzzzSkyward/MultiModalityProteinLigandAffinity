@@ -1,5 +1,6 @@
 from header import *
 from getgpu import *
+from logg import *
 
 
 def activate(activation_name="Mish"):
@@ -61,6 +62,7 @@ def load_checkpoint(path, device=None):
     full_path = './weights/' + path + ".pth"
     if not os.path.exists(full_path):
         raise Exception("Checkpoint not found: {}".format(path))
+    log("Loading checkpoint: {}".format(path))
     return torch.load(full_path, map_location=device)
 
 
@@ -103,3 +105,31 @@ def get_device():
     else:
         device = torch.device(f"cuda:{get_best_gpu()}")
     return device
+
+
+def int8_to_onehot(int8_tensor, device=None):
+    int_tensor = int8_tensor.to(torch.long)
+    # print(int_tensor.shape,int_tensor.dtype, int_tensor.device)
+    # print(int_tensor[0])
+    # 将int8类型张量转换为onehot张量
+    onehot = F.one_hot(int_tensor, num_classes=128).float()
+    if device is not None:
+        onehot = onehot.to(device)
+    return onehot
+
+
+def winit(model):
+    init = nn.init
+    for m in model.modules():
+        if isinstance(m, nn.Conv2d):
+            init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            if m.bias is not None:
+                init.constant_(m.bias, 0)
+        elif isinstance(m, nn.BatchNorm2d):
+            init.constant_(m.weight, 1)
+            init.constant_(m.bias, 0)
+        elif isinstance(m, nn.Linear):
+            init.normal_(m.weight, 0, 0.01)
+            if m.bias is not None:
+                init.constant_(m.bias, 0)
+

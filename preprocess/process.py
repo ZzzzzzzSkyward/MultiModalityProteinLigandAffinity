@@ -1,4 +1,6 @@
 # 该文件用于处理PDBBind2020数据集
+from math import log
+from sklearn.decomposition import PCA
 import scipy.sparse as sp
 import zipfile
 import itertools
@@ -6,7 +8,8 @@ import tqdm
 import json
 import random
 import shutil
-from rdkit import Chem
+from rdkit import Chem, DataStructs
+from rdkit.Chem import AllChem
 from Bio.PDB import PDBParser
 import numpy as np
 import pandas as pd
@@ -26,8 +29,9 @@ pairs_length = len([
 ])
 # 本次任务处理的集合
 num_size = 5319
-percent_train = 0.9
+percent_train = 1
 protein_seq_maxlength = 2048
+ligand_seq_maxlength = 1024
 
 # 读取PDB文件
 
@@ -129,14 +133,15 @@ def extract_seq(file_list):
 
 def pad_array(arr, dtype=np.int32):
     max_len = max([len(row) for row in arr])
+    target_len = ligand_seq_maxlength
     print("Pad array: max_len: {}".format(max_len))
     padded_arr = np.zeros(
         # (len(arr), min(protein_seq_maxlength, max_len)), dtype=dtype)
-        (len(arr), protein_seq_maxlength),
+        (len(arr), target_len),
         dtype=dtype)
     for i, row in enumerate(arr):
-        padded_arr[i, :min(protein_seq_maxlength, len(row)
-                           )] = row[:min(protein_seq_maxlength, len(row))]
+        padded_arr[i, :min(target_len, len(row))
+                   ] = row[:min(target_len, len(row))]
     return padded_arr
 
 
@@ -181,7 +186,26 @@ if __name__ == 'main__':
     pdb_file_path = "D:/pdb/refined-set/1a28/1a28_protein.pdb"
     print(pdb_parse(pdb_file_path))
 
-# 选择-logKd/Ki作为标签，因为只有这个数据是全的
+# 选择logKd作为标签，因为只有这个数据是全的
+
+unit_string = {
+    'm': "e-3",
+    'u': "e-6",
+    'n': "e-9",
+    'p': "e-12",
+    'f': "e-15"
+}
+
+
+def convert_unit(s):
+    s = s.replace(
+        'M',
+        '')
+    for i, unit in unit_string.items():
+        s = s.replace(
+            i,
+            unit)
+    return s
 
 
 def extract_protein_compound_label(splitset,
@@ -197,29 +221,48 @@ def extract_protein_compound_label(splitset,
                      delim_whitespace=True,
                      header=None,
                      skiprows=4,
-                     usecols=[0, 1, 2, 3])
+                     usecols=[0, 3, 4])
 
     # 重命名列名
-    df.columns = ['pdbid', 'resolution', 'release_year', '-logKd/Ki']
+    df.columns = ['pdbid', '-logKd/Ki', 'Kd/Ki']
 
     # 筛选出包含-logKd/Ki值的数据
     pdbs = read_filelist(splitset)
-    logk_data = []
-    # read '-logKd/Ki' from df, search by 'pdb'
+    kd_data = []
+    # read 'Kd/Ki' from df, search by 'pdb'
+    # 就当做两者是通用的罢
+    kd_or_ki=""
     for pdb in pdbs:
-        logk_value = df.loc[df['pdbid'] == pdb, '-logKd/Ki'].values
-        if len(logk_value) > 0:
-            logk_data.append(float(logk_value[0]))
-    dump_npy(splitset + "_logk", np.array(logk_data, np.float32))
-    return logk_data
+        try:
+            kd_or_ki = df.loc[df['pdbid'] == pdb, 'Kd/Ki'].values
+            kd_or_ki = kd_or_ki[0]
+            if 'Kd' in kd_or_ki:
+                kd = float(convert_unit(kd_or_ki.split('=')[1]))
+                kd = kd_or_ki
+            else:
+                ki = float(convert_unit(kd_or_ki.split('=')[1]))
+                kd = ki
+            kd_data.append(-log(kd))  # 改成以e为底（没啥用）
+        except Exception as e:
+            print(pdb, e, kd_or_ki)
+    dump_npy(splitset + "_logk", np.array(kd_data, np.float32))
+    return kd_data
 
 
 # 生成SMILES文本
 SMILES_CHARS = [
     ' ', '#', '(', ')', '+', '-', '.', '/', ':', '0', '1', '2', '3', '4', '5',
-    '6', '7', '8', '9', '=', '@', 'B', 'C', 'F', 'H', 'I', 'N', 'O', 'P', 'S',
-    '[', '\\', ']', 'a', 'c', 'l', 'n', 'o', 'r', 's'
+    '6', '7', '8', '9', '=', '@', '%', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    '[', '\\', ']', 'a', 'b', 'c', 'e', 'i', 'l', 'n', 'o', 'r', 's', 't', 'u'
 ]
+# _ added for 1.5 bond, $=branch, %=ring,eliminate ] for short, replace [ with |
+SELFIES_CHARS = [
+    ' ', '#', '(', ')', '+', '-', '.', '/', ':', '0', '1', '2', '3', '4', '5',
+    '6', '7', '8', '9', '=', '_', '$', '%', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    '|', '\\', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+]
+assert len(SMILES_CHARS) < 128, "SMILES_CHARS should be less than 256"
+assert len(SELFIES_CHARS) < 128, "SELFIES_CHARS should be less than 256"
 smiles_dict = {v: i for i, v in enumerate(SMILES_CHARS)}
 
 
@@ -230,16 +273,28 @@ def generate_smiles(file_path):
     :param file_path: mol2/sdf文件路径
     :return: SMILES字符串
     """
-    # 读取分子
-    mol = Chem.MolFromMolFile(file_path, sanitize=False)
-
-    # 生成SMILES
-    smiles = Chem.MolToSmiles(mol)
+    try:
+        # replace Du in file with H
+        with open(file_path, 'r') as f:
+            lines = f.readlines()
+        with open(file_path, 'w') as f:
+            for line in lines:
+                if line.find('Du') > 0:
+                    line = line.replace('Du', 'H')
+                f.write(line)
+        # 读取分子
+        mol = Chem.MolFromMolFile(file_path, sanitize=False)
+        # 生成SMILES
+        smiles = Chem.MolToSmiles(mol)
+    except Exception as e:
+        print(file_path)
+        # raise e
+        return None
 
     return smiles
 
 
-def generate_compound_1d(splitset):
+def generate_compound_1d(splitset, selfies=False):
     smiles_list = []
     ligands = read_filelist(splitset)
     for folder_name in ligands:
@@ -247,12 +302,20 @@ def generate_compound_1d(splitset):
         mol2_path = data_path + folder_name + "/" + folder_name + "_ligand.sdf"
         # 读取分子并生成SMILES
         one_smiles = generate_smiles(mol2_path)
+        if one_smiles is None:
+            continue
         for i in one_smiles:
-            assert i in smiles_dict, f"'{i}' not in smiles dict"
-        one_smiles = [smiles_dict[i] for i in one_smiles]
+            assert i in smiles_dict, f"'{i}' not in smiles dict, sentence is {one_smiles},{smiles_dict}"
+        if not selfies:
+            one_smiles = [smiles_dict[i] for i in one_smiles]
         smiles_list.append(one_smiles)
     # dump_set(splitset + "_smiles", smiles_list)
-    dump_npy(splitset + "_smiles", pad_array(smiles_list, np.int8))
+    if selfies:
+        import compound_selfies as selfies
+        data = selfies.encode(smiles_list, SELFIES_CHARS)
+        dump_npy(splitset + "_selfies", pad_array(data, np.int8))
+    else:
+        dump_npy(splitset + "_smiles", pad_array(smiles_list, np.int8))
     return smiles_list
 
 
@@ -287,7 +350,7 @@ def get_mol2_hash(file_path):
 
 
 hash_record = {}
-hashfile = PDBBindDir + "ligands.json"
+hashfile = PDBBindDir + "ligands_full.json"
 
 
 def read_hash_record():
@@ -308,7 +371,8 @@ read_hash_record()
 
 
 def get_id(dirname, is_protein=False):
-    # filename = f"{dirname}/{dirname}_protein.pdb" if is_protein else f"{dirname}/{dirname}_ligand.mol2"
+    # filename = f"{dirname}/{dirname}_protein.pdb" if is_protein else
+    # f"{dirname}/{dirname}_ligand.mol2"
     if dirname in hash_record:
         return hash_record[dirname][0 if is_protein else 1]
     else:
@@ -574,8 +638,7 @@ def analyze_data():
         f"Number of protein-ligand pairs not in train dataset: {len(test_pairs_not_in_train)}")
 
 
-def merge_matrix(splitset, pattern, name):
-    pdbid_list = read_filelist(splitset)
+def merge_matrix(splitset, pdbid_list, pattern, name):
     output_file = splitset + name
     mats = []
     merged_mat = None
@@ -599,9 +662,8 @@ def merge_matrix(splitset, pattern, name):
     dump_npy(output_file, merged_mat)
 
 
-def generate_compound_2d(splitset):
+def generate_compound_2d(splitset, pdbid_list):
     from compound_gcn import batch_generate
-    pdbid_list = read_filelist(splitset)
     features, matrices = batch_generate(pdbid_list)
     dump_npy(splitset + "_2dfeature", features)
     dump_npy(splitset + "_matrix_sparse", matrices)
@@ -614,17 +676,70 @@ def reverse_sequence(splitset):
     dump_npy(splitset + "_sequence", data)
 
 
+def reduce_morgan_matrix(morgan_matrix, components=None):
+    """
+    使用 PCA 算法对 Morgan 指纹矩阵进行降维，并提示最佳降维维度或者展示 PCA 维度的信息量
+
+    Args:
+        morgan_matrix: Morgan 指纹矩阵，大小为 (n_samples, n_features)
+
+    Returns:
+        降维后的矩阵，大小为 (n_samples, n_components)
+    """
+    # 应用 PCA 算法进行降维
+    pca = PCA()
+    reduced_data = pca.fit_transform(morgan_matrix)
+
+    # 计算方差解释率
+    variance_explained = pca.explained_variance_ratio_
+
+    # 提示最佳降维维度或者展示 PCA 维度的信息量
+    if not components:
+        print("PCA 维度\t信息量")
+        for i, explained_ratio in enumerate(np.cumsum(variance_explained)):
+            print(f"{i + 1}\t{explained_ratio:.0%}")
+        best_n_components = np.argmax(np.cumsum(variance_explained) >= 0.95) + 1
+        print(f"\n建议选择的最佳降维维度为：{best_n_components}")
+
+    # 选择最佳降维维度进行降维
+    pca = PCA(n_components=components or best_n_components)
+    reduced_data = pca.fit_transform(morgan_matrix)
+
+    return reduced_data
+
+
+def get_compound_fingerprint(splitset, pdbid_list):
+    ret = []
+    for pdbid in pdbid_list:
+        mol2file = data_path + pdbid + "/" + pdbid + "_ligand.mol2"
+        sdffile = data_path + pdbid + "/" + pdbid + "_ligand.sdf"
+        mol = Chem.MolFromMol2File(mol2file)
+        if not mol:
+            uppl = Chem.SDMolSupplier(sdffile)
+            mol = uppl[0]
+            assert mol, pdbid
+        fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2, 128)
+        # num = int(DataStructs.BitVectToText(fp), base=2)
+        arr = np.zeros((128,))
+        DataStructs.ConvertToNumpyArray(fp, arr)
+        ret.append(arr)
+    ret = np.array(ret, dtype=np.float32)
+    # ret = reduce_morgan_matrix(ret,128)
+    dump_npy(splitset + "_fingerprint", ret)
+
+
 if __name__ == "__main__":
     all = [
-        "train",
         "test_protein_only", "test_ligand_only", "test_both_none",
-        "test_both_present"
+        "test_both_present",
+        "train",
     ]
     # split_dataset()
     # for i in ["test_both_none"]:
-    # for i in all:
-    # for i in ["train"]:
-    for i in []:
+    for i in all:
+        # for i in ["train_full", "test_protein_only_full"]:
+        pdbid_list = read_filelist(i)
+        # for i in []:
         # extract_seq_from_file(i)
         # reverse_sequence(i)
         for pattern, name in [
@@ -635,10 +750,12 @@ if __name__ == "__main__":
                 ("{}_ligand_feature_alpha_handcrafted.npy", "_ligand_alpha"),
                 ("{}_ligand_feature_ligand_level1_handcrafted.npy", "_ligand_lv1")
         ]:
-            merge_matrix(i, pattern, name)
-        # generate_compound_1d(i)
-        # extract_protein_compound_label(i)
-        # generate_compound_2d(i)
+            pass
+            # merge_matrix(i, pattern, name)
+        # generate_compound_1d(i, True)
+        # get_compound_fingerprint(i, pdbid_list)
+        extract_protein_compound_label(i)
+        # generate_compound_2d(i,pdbid_list)
         # split_zernike(i)
-    zip_train_test_files()
+    # zip_train_test_files()
     # analyze_data()

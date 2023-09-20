@@ -7,8 +7,13 @@ argument_settings = {
     'resume': True,
     'data_processed_dir': './data_processed/',
     'data_pretrain_dir': './data_pretrain/',
+    'protein': "",
+    'ligand': "",
+    'matrix': '',
     'train': True,
     'test': True,
+    'main': True,
+    'short': True,
     'tofile': True,
     'file': 'log.txt',
     'batch_size': 32,
@@ -23,6 +28,8 @@ argument_settings = {
     'dropout': 0.5,
     'train_add': True,
     'pretrained': True,
+    'newoptim': True,
+    'forcepretrain': True,
     'name': 'test' + time.strftime("%m-%d %H:%M:%S", time.localtime())
 }
 args = Namespace()
@@ -34,7 +41,7 @@ def initialize_parser(settings=argument_settings):
     global args
     for i in settings:
         if settings[i] == True:
-            argument_parser.add_argument('--' + i,
+            argument_parser.add_argument('-' + i,
                                          action='store_true',
                                          help='')
         else:

@@ -3,7 +3,7 @@
 from header import *
 from constants import *
 # neural network modules
-from models import *
+from useless.models import *
 # command line interface
 from cli import *
 # log service
@@ -29,13 +29,16 @@ log(args)
 # 4.define output
 toscreen()
 if args.tofile:
-    tofile()
+    tofile(args.file)
 # 5.load model
 # currently there is only the concatenation model
-params.input_size = 2048
+params.compound_size = 512
+params.protein_size = 2048
 params.hidden_size = 128
-model = ProteinAutoEncoder(params)
-subdir="test_wo0"
+model = ProteinEncoder(params)
+subdir = "test_1"
+seq, smiles, logk, zernike, graph, edge, alpha, lv1 = 'seq', 'smiles', 'logk', 'zernike', 'matrix', '2dfeature', 'alpha', 'lv1'
+choice = [seq,zernike]
 # 6.train model
 if args.train:
     trainer = Train
@@ -43,10 +46,10 @@ if args.train:
         trainer = Train_Add
     # load data
     data_train = dataset("data_train", "train", DATA_DIR, subdir)()
-    data_train.choose(["seq"])
+    data_train.choose(choice)
     loader_train = dataloader(data_train, params.bs)
     data_test = dataset("data_test", "test_both_present", DATA_DIR, subdir)()
-    data_test.choose(["seq"])
+    data_test.choose(choice)
     loader_test = dataloader(data_test, params.bs, False)
     trainer(model, loader_train, loader_test, args)
 # 7.verify model
@@ -54,7 +57,7 @@ if args.train:
 if args.test:
     # load data
     data_train = dataset("data_train", "train", DATA_DIR, subdir)()
-    data_train.choose(["seq"])
+    data_train.choose(choice)
     loader_train = dataloader(data_train, params.bs, False)
     data_test = dataset("data_test", "test_both_present", DATA_DIR, subdir)()
     data_test_ligand_only = dataset("data_test_ligand_only",
@@ -63,10 +66,10 @@ if args.test:
                                      "test_protein_only", DATA_DIR, subdir)()
     data_test_both_none = dataset("data_test_both_none", "test_both_none",
                                   DATA_DIR, subdir)()
-    data_test.choose(["seq", "smiles", "logk"])
-    data_test_ligand_only.choose(["seq", "smiles", "logk"])
-    data_test_protein_only.choose(["seq", "smiles", "logk"])
-    data_test_both_none.choose(["seq", "smiles", "logk"])
+    data_test.choose(choice)
+    data_test_ligand_only.choose(choice)
+    data_test_protein_only.choose(choice)
+    data_test_both_none.choose(choice)
     loader_test = dataloader(data_test, params.bs, False)
     loader_test_ligand_only = dataloader(data_test_ligand_only, params.bs,
                                          False)

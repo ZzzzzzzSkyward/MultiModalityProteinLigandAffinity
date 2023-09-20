@@ -1,22 +1,34 @@
 from header import *
-from logg import warn
+from logg import *
 
 all_dataset_files = {
     # the amino sequence of proteins
     "seq": "{cate}_sequence",
     # the smiles of compounds
     'smiles': "{cate}_smiles",
+    # selfies
+    'selfies': "{cate}_selfies",
     # the information of compounds, in adjacent matrix
-    'adjacent': "{cate}_adjacent",
+    'adjacent': "{cate}_matrix",
+    '4': "4_selfies",
+    '5': "5_selfies",
+    '6': "6_selfies",
+    '7': "7_selfies",
+    '8': "8_selfies",
     # protein contact
     'contact': "{cate}_contact",
     # label of contact
     'interact': "{cate}_interact",
     # label of compound-protein interaction
-    'logk': "{cate}_logk"
+    'logk': "{cate}_logk",
+    'zernike': "{cate}_zernike",
+    'fingerprint': "{cate}_fingerprint",
+    'matrix': "{cate}_matrix_sparse",
+    '2dfeature': "{cate}_2dfeature",
+    'alpha': "{cate}_ligand_alpha",
+    'lv1': "{cate}_ligand_lv1",
+    'complexinteract': '{cate}_complex_interact'
 }
-
-
 
 
 def load_matrix(filename):
@@ -37,7 +49,13 @@ def load_matrix(filename):
 
 
 def _load(filename):
-    return load_matrix(filename)
+    log("loadfile", filename)
+    mat = load_matrix(filename)
+    if mat.dtype == np.int8:
+        mat = torch.from_numpy(mat).to(torch.long)
+    else:
+        mat = torch.from_numpy(mat).to(torch.float)
+    return mat
 
 
 def _load_multi(dir, cate, selected):
@@ -75,12 +93,14 @@ def _dataset_select(self, names=[]):
 
 
 def dataset(class_name, filename="", dir="", subdir=None):
+    log("Add dataset", class_name, filename, dir, subdir)
     base_class = torch.utils.data.Dataset
     directory = zzz._todir(dir)
     if subdir:
         directory = zzz._todir(dir) + subdir
     # Define a new class that inherits from the provided base class
     class_attributes = {
+        'length': -1,
         '__init__':
         lambda self: setattr(self, "filename", filename),
         'load_data':
@@ -88,7 +108,7 @@ def dataset(class_name, filename="", dir="", subdir=None):
         'choose':
         _dataset_select,
         '__len__':
-        lambda self: len(self.data),
+        lambda self: self.length if self.length > 0 else len(self.data),
         '__getitem__':
         _dataset_get_data
     }
@@ -97,7 +117,7 @@ def dataset(class_name, filename="", dir="", subdir=None):
 
 
 def dataloader(_dataset, batch_size=32, shuffle=True):
-    print("loader", "batch_size", batch_size, "shuffle", shuffle)
+    # print("loader", "batch_size", batch_size, "shuffle", shuffle)
     loader = torch.utils.data.DataLoader(dataset=_dataset,
                                          batch_size=batch_size,
                                          shuffle=shuffle)
